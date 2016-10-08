@@ -11,8 +11,25 @@ import (
 	"time"
 )
 
+// An LHash is a map structure using the linear-hashing
+// algorithm. This implementation uses the SipHash hashing algorithm,
+// which is available on many platforms and languages, and uses
+// msgpack as the serialization format for the LHash state, which
+// again, is widely available.
+//
+// Multiple connections may interact with the same underlying LHash
+// objects at the same time, as GoshawkDB ensures through the use of
+// strong serialization that any dependent operations are safely
+// ordered.
 type LHash struct {
-	Conn   *client.Connection
+	// The connection used to create this LHash object. As usual with
+	// GoshawkDB, objects are scoped to connections so you should not
+	// use the same LHash object from multiple connections. You can
+	// have multiple LHash objects for the same underlying set of
+	// GoshawkDB objects.
+	Conn *client.Connection
+	// The underlying Object in GoshawkDB which holds the root data for
+	// the LHash.
 	ObjRef client.ObjectRef
 	root   *mp.Root
 	value  []byte
@@ -21,6 +38,8 @@ type LHash struct {
 	k1     uint64
 }
 
+// Create a brand new empty LHash. This creates a new GoshawkDB Object
+// and initialises it for use as an LHash.
 func NewEmptyLHash(conn *client.Connection) (*LHash, error) {
 	res, _, err := conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
 		rootObjRef, err := txn.CreateObject([]byte{})
@@ -64,6 +83,10 @@ func NewEmptyLHash(conn *client.Connection) (*LHash, error) {
 	}
 }
 
+// Create an LHash object from an existing given GoshawkDB Object. Use
+// this to regain access to an existing LHash which has already been
+// created. This function does not do any initialisation: it assumes
+// the Object passed is already initialised for LHash.
 func LHashFromObj(conn *client.Connection, objRef client.ObjectRef) *LHash {
 	return &LHash{
 		Conn:   conn,
@@ -110,6 +133,10 @@ func (lh *LHash) hash(key []byte) uint64 {
 	return hash.Hash(lh.k0, lh.k1, key)
 }
 
+// Search the LHash for the given key. The key is hashed using the
+// SipHash algorithm, and comparison between keys is done with
+// bytes.Equal. If no matching key is found, a nil ObjectRef is
+// returned.
 func (lh *LHash) Find(key []byte) (*client.ObjectRef, error) {
 	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
 		err := lh.populate()
@@ -129,6 +156,10 @@ func (lh *LHash) Find(key []byte) (*client.ObjectRef, error) {
 	}
 }
 
+// Idempotently add the given key and value to the LHash. The key is
+// hashed using the SipHash algorithm, and comparison between keys is
+// done with bytes.Equal. If a matching key is found, the
+// corresponding value is updated.
 func (lh *LHash) Put(key []byte, value client.ObjectRef) error {
 	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
 		err := lh.populate()
@@ -162,6 +193,9 @@ func (lh *LHash) Put(key []byte, value client.ObjectRef) error {
 	return err
 }
 
+// Idempotently remove any matching entry from the LHash. The key is
+// hashed using the SipHash algorithm, and comparison between keys is
+// done with bytes.Equal.
 func (lh *LHash) Remove(key []byte) error {
 	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
 		err := lh.populate()
@@ -197,6 +231,7 @@ func (lh *LHash) Remove(key []byte) error {
 	return err
 }
 
+// Returns the number of entries in the LHash.
 func (lh *LHash) Size() (int64, error) {
 	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
 		err := lh.populate()
