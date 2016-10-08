@@ -1,3 +1,13 @@
+// An LHash is a map structure using the linear-hashing
+// algorithm. This implementation uses the SipHash hashing algorithm,
+// which is available on many platforms and languages, and uses
+// msgpack as the serialization format for the LHash state, which
+// again, is widely available.
+//
+// Multiple connections may interact with the same underlying LHash
+// objects at the same time, as GoshawkDB ensures through the use of
+// strong serialization that any dependent operations are safely
+// ordered.
 package linearhash
 
 import (
@@ -11,16 +21,6 @@ import (
 	"time"
 )
 
-// An LHash is a map structure using the linear-hashing
-// algorithm. This implementation uses the SipHash hashing algorithm,
-// which is available on many platforms and languages, and uses
-// msgpack as the serialization format for the LHash state, which
-// again, is widely available.
-//
-// Multiple connections may interact with the same underlying LHash
-// objects at the same time, as GoshawkDB ensures through the use of
-// strong serialization that any dependent operations are safely
-// ordered.
 type LHash struct {
 	// The connection used to create this LHash object. As usual with
 	// GoshawkDB, objects are scoped to connections so you should not
