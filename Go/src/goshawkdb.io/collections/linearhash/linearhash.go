@@ -279,7 +279,7 @@ func (lh *LHash) split() error {
 		}
 		emptied := true
 		for idx, k := range ([][]byte)(*b.entries) {
-			if len(k) == 0 {
+			if b.isSlotEmpty(idx) {
 				continue
 			} else if lh.root.BucketIndex(lh.hash(k)) == sOld {
 				emptied = false
@@ -409,7 +409,7 @@ func (b *bucket) populate() error {
 
 func (b *bucket) find(key []byte) (*client.ObjectRef, error) {
 	for idx, k := range ([][]byte)(*b.entries) {
-		if len(k) == 0 {
+		if b.isSlotEmpty(idx) {
 			continue
 		} else if bytes.Equal(key, k) {
 			return &b.refs[idx+1], nil
@@ -428,7 +428,7 @@ func (b *bucket) find(key []byte) (*client.ObjectRef, error) {
 func (b *bucket) put(key []byte, value client.ObjectRef) (bNew *bucket, added bool, chainDelta int64, err error) {
 	slot := -1
 	for idx, k := range ([][]byte)(*b.entries) {
-		if len(k) == 0 {
+		if b.isSlotEmpty(idx) {
 			if slot == -1 {
 				// we've found a hole for it, let's use it. But we can
 				// only use it if we're sure it's not already in this
@@ -534,7 +534,7 @@ func (b *bucket) putInNext(key []byte, value client.ObjectRef) (bNew *bucket, ad
 func (b *bucket) remove(key []byte) (bNew *bucket, removed bool, chainDelta int64, err error) {
 	slot := -1
 	for idx, k := range ([][]byte)(*b.entries) {
-		if len(k) == 0 {
+		if b.isSlotEmpty(idx) {
 			continue
 		} else if bytes.Equal(key, k) {
 			slot = idx
@@ -613,4 +613,8 @@ func (b *bucket) next() (*bucket, error) {
 	} else {
 		return b.newBucket(b.refs[0])
 	}
+}
+
+func (b *bucket) isSlotEmpty(idx int) bool {
+	return idx+1 >= len(b.refs) || b.refs[idx+1].ReferencesSameAs(b.objRef)
 }
