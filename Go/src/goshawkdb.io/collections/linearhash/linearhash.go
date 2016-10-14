@@ -298,6 +298,7 @@ func (lh *LHash) split() error {
 				if bPrev == nil {
 					// we have to keep b here, and there's no next,
 					// so we have to write out b.
+					b.tidyRefTail()
 					err = b.write(true)
 					if err != nil {
 						return err
@@ -309,11 +310,10 @@ func (lh *LHash) split() error {
 					bPrev.refs[0] = bPrev.objRef
 				}
 			} else { // there is a next
+				lh.root.BucketCount--
 				if bPrev == nil {
-					lh.root.BucketCount--
 					lh.refs[sOld] = bNext.objRef
 				} else {
-					lh.root.BucketCount--
 					bPrev.refs[0] = bNext.objRef
 				}
 			}
