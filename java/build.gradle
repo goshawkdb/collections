@@ -2,7 +2,6 @@ apply plugin: 'java'
 
 version = 'dev'
 group = 'io.goshawkdb'
-
 archivesBaseName = "goshawkdb-collections"
 
 sourceCompatibility = 1.8
@@ -13,11 +12,9 @@ repositories {
 }
 
 dependencies {
-    compile group: 'org.capnproto', name: 'runtime', version: '0.1.1'
-    compile group: 'io.netty', name: 'netty-all', version: '4.1.5.Final'
-    compile group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.55'
-    compile group: 'commons-codec', name: 'commons-codec', version: '1.10'
+    compile project(':java-client')
     compile group: 'org.msgpack', name: 'msgpack-core', version: '0.8.11'
     compile group: 'com.zackehh', name: 'siphash', version: '1.0.0'
+    testCompile project(path: ':java-client', configuration: 'testFixtures')
     testCompile group: 'junit', name: 'junit', version: '4.11'
 }
