@@ -1,4 +1,6 @@
 apply plugin: 'java'
+apply plugin: 'java-library-distribution'
+apply plugin: 'maven'
 
 version = 'dev'
 group = 'io.goshawkdb'
@@ -6,6 +8,95 @@ archivesBaseName = "goshawkdb-collections"
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
+
+javadoc {
+    source = {
+        fileTree(dir: 'src/main/java/io/goshawkdb/collections',
+                includes: ['linearhash/LinearHash.java'])
+    }
+}
+
+jar {
+    manifest {
+        from('MANIFEST.MF')
+        attributes("Specification-Version": version,
+                "Implementation-Version": version)
+    }
+    into('META-INF') {
+        from('LICENSE')
+    }
+}
+
+distributions {
+    main {
+        contents {
+            from('LICENSE')
+        }
+    }
+}
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "file://localhost/tmp/myRepo/")
+            pom.project {
+                name 'GoshawkDB Collections'
+                packaging 'jar'
+                description 'The Collections Library for GoshawkDB'
+                url = 'https://goshawkdb.io/'
+
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution 'repo'
+                    }
+                }
+
+                developers {
+                    developer {
+                        name = 'Matthew Sackman'
+                        email = 'matthew@goshawkdb.io'
+                        organization = 'GoshawkDB'
+                        organizationUrl = 'https://goshawkdb.io/'
+                    }
+                }
+
+                scm {
+                    connection 'scm:hg:https://src.goshawkdb.io/collections/'
+                    developerConnection 'scm:hg:https://src.goshawkdb.io/collections/'
+                    url 'https://src.goshawkdb.io/collections/'
+                }
+            }
+        }
+    }
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+    manifest {
+        from jar.manifest
+    }
+    into('META-INF') {
+        from('LICENSE')
+    }
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+    manifest {
+        from jar.manifest
+    }
+    into('META-INF') {
+        from('LICENSE')
+    }
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
 
 repositories {
     mavenCentral()

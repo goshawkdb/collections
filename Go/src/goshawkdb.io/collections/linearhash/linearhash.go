@@ -48,17 +48,10 @@ func NewEmptyLHash(conn *client.Connection) (*LHash, error) {
 		}
 
 		lh := LHashFromObj(conn, rootObjRef)
-		lh.root = new(mp.Root)
-		lh.root.Size = 0
-		lh.root.BucketCount = 2
-		lh.root.SplitIndex = 0
-		lh.root.MaskHigh = 3
-		lh.root.MaskLow = 1
-
 		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 		key := make([]byte, 16)
 		rng.Read(key)
-		lh.root.Hashkey = key
+		lh.root = mp.NewRoot(key)
 
 		refs := make([]client.ObjectRef, lh.root.BucketCount)
 		lh.refs = refs
@@ -106,16 +99,16 @@ func (lh *LHash) populate() error {
 			return nil, err
 		}
 		// fmt.Println("read ->", value)
-		root := new(mp.Root)
-		_, err = root.UnmarshalMsg(value)
+		rootraw := new(mp.RootRaw)
+		_, err = rootraw.UnmarshalMsg(value)
 		if err != nil {
 			return nil, err
 		}
-		lh.root = root
+		lh.root = rootraw.ToRoot()
 		lh.value = value
 		lh.refs = refs
-		lh.k0 = binary.LittleEndian.Uint64(root.Hashkey[0:8])
-		lh.k1 = binary.LittleEndian.Uint64(root.Hashkey[8:16])
+		lh.k0 = binary.LittleEndian.Uint64(lh.root.HashKey[0:8])
+		lh.k1 = binary.LittleEndian.Uint64(lh.root.HashKey[8:16])
 		// fmt.Printf("read %#v, %v %v\n", lh.root, lh.k0, lh.k1)
 		return nil, nil
 	})
@@ -338,7 +331,7 @@ func (lh *LHash) split() error {
 }
 
 func (lh *LHash) write() (err error) {
-	lh.value, err = lh.root.MarshalMsg(lh.value[:0])
+	lh.value, err = lh.root.UpdateRaw().MarshalMsg(lh.value[:0])
 	if err != nil {
 		return
 	}

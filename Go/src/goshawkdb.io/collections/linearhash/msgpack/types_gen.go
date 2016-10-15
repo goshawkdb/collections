@@ -86,7 +86,7 @@ func (z Bucket) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
-func (z *Root) DecodeMsg(dc *msgp.Reader) (err error) {
+func (z *RootRaw) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
 	var zcua uint32
@@ -102,32 +102,32 @@ func (z *Root) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "Size":
-			z.Size, err = dc.ReadInt64()
+			err = z.Size.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
 		case "BucketCount":
-			z.BucketCount, err = dc.ReadInt64()
+			err = z.BucketCount.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
 		case "SplitIndex":
-			z.SplitIndex, err = dc.ReadUint64()
+			err = z.SplitIndex.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
 		case "MaskHigh":
-			z.MaskHigh, err = dc.ReadUint64()
+			err = z.MaskHigh.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
 		case "MaskLow":
-			z.MaskLow, err = dc.ReadUint64()
+			err = z.MaskLow.DecodeMsg(dc)
 			if err != nil {
 				return
 			}
-		case "Hashkey":
-			z.Hashkey, err = dc.ReadBytes(z.Hashkey)
+		case "HashKey":
+			z.HashKey, err = dc.ReadBytes(z.HashKey)
 			if err != nil {
 				return
 			}
@@ -142,14 +142,14 @@ func (z *Root) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
+func (z *RootRaw) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 6
 	// write "Size"
 	err = en.Append(0x86, 0xa4, 0x53, 0x69, 0x7a, 0x65)
 	if err != nil {
 		return err
 	}
-	err = en.WriteInt64(z.Size)
+	err = z.Size.EncodeMsg(en)
 	if err != nil {
 		return
 	}
@@ -158,7 +158,7 @@ func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteInt64(z.BucketCount)
+	err = z.BucketCount.EncodeMsg(en)
 	if err != nil {
 		return
 	}
@@ -167,7 +167,7 @@ func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteUint64(z.SplitIndex)
+	err = z.SplitIndex.EncodeMsg(en)
 	if err != nil {
 		return
 	}
@@ -176,7 +176,7 @@ func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteUint64(z.MaskHigh)
+	err = z.MaskHigh.EncodeMsg(en)
 	if err != nil {
 		return
 	}
@@ -185,16 +185,16 @@ func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	err = en.WriteUint64(z.MaskLow)
+	err = z.MaskLow.EncodeMsg(en)
 	if err != nil {
 		return
 	}
-	// write "Hashkey"
-	err = en.Append(0xa7, 0x48, 0x61, 0x73, 0x68, 0x6b, 0x65, 0x79)
+	// write "HashKey"
+	err = en.Append(0xa7, 0x48, 0x61, 0x73, 0x68, 0x4b, 0x65, 0x79)
 	if err != nil {
 		return err
 	}
-	err = en.WriteBytes(z.Hashkey)
+	err = en.WriteBytes(z.HashKey)
 	if err != nil {
 		return
 	}
@@ -202,32 +202,47 @@ func (z *Root) EncodeMsg(en *msgp.Writer) (err error) {
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *Root) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *RootRaw) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 6
 	// string "Size"
 	o = append(o, 0x86, 0xa4, 0x53, 0x69, 0x7a, 0x65)
-	o = msgp.AppendInt64(o, z.Size)
+	o, err = z.Size.MarshalMsg(o)
+	if err != nil {
+		return
+	}
 	// string "BucketCount"
 	o = append(o, 0xab, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendInt64(o, z.BucketCount)
+	o, err = z.BucketCount.MarshalMsg(o)
+	if err != nil {
+		return
+	}
 	// string "SplitIndex"
 	o = append(o, 0xaa, 0x53, 0x70, 0x6c, 0x69, 0x74, 0x49, 0x6e, 0x64, 0x65, 0x78)
-	o = msgp.AppendUint64(o, z.SplitIndex)
+	o, err = z.SplitIndex.MarshalMsg(o)
+	if err != nil {
+		return
+	}
 	// string "MaskHigh"
 	o = append(o, 0xa8, 0x4d, 0x61, 0x73, 0x6b, 0x48, 0x69, 0x67, 0x68)
-	o = msgp.AppendUint64(o, z.MaskHigh)
+	o, err = z.MaskHigh.MarshalMsg(o)
+	if err != nil {
+		return
+	}
 	// string "MaskLow"
 	o = append(o, 0xa7, 0x4d, 0x61, 0x73, 0x6b, 0x4c, 0x6f, 0x77)
-	o = msgp.AppendUint64(o, z.MaskLow)
-	// string "Hashkey"
-	o = append(o, 0xa7, 0x48, 0x61, 0x73, 0x68, 0x6b, 0x65, 0x79)
-	o = msgp.AppendBytes(o, z.Hashkey)
+	o, err = z.MaskLow.MarshalMsg(o)
+	if err != nil {
+		return
+	}
+	// string "HashKey"
+	o = append(o, 0xa7, 0x48, 0x61, 0x73, 0x68, 0x4b, 0x65, 0x79)
+	o = msgp.AppendBytes(o, z.HashKey)
 	return
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
-func (z *Root) UnmarshalMsg(bts []byte) (o []byte, err error) {
+func (z *RootRaw) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	var field []byte
 	_ = field
 	var zxhx uint32
@@ -243,32 +258,32 @@ func (z *Root) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "Size":
-			z.Size, bts, err = msgp.ReadInt64Bytes(bts)
+			bts, err = z.Size.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
 		case "BucketCount":
-			z.BucketCount, bts, err = msgp.ReadInt64Bytes(bts)
+			bts, err = z.BucketCount.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
 		case "SplitIndex":
-			z.SplitIndex, bts, err = msgp.ReadUint64Bytes(bts)
+			bts, err = z.SplitIndex.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
 		case "MaskHigh":
-			z.MaskHigh, bts, err = msgp.ReadUint64Bytes(bts)
+			bts, err = z.MaskHigh.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
 		case "MaskLow":
-			z.MaskLow, bts, err = msgp.ReadUint64Bytes(bts)
+			bts, err = z.MaskLow.UnmarshalMsg(bts)
 			if err != nil {
 				return
 			}
-		case "Hashkey":
-			z.Hashkey, bts, err = msgp.ReadBytesBytes(bts, z.Hashkey)
+		case "HashKey":
+			z.HashKey, bts, err = msgp.ReadBytesBytes(bts, z.HashKey)
 			if err != nil {
 				return
 			}
@@ -284,7 +299,7 @@ func (z *Root) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *Root) Msgsize() (s int) {
-	s = 1 + 5 + msgp.Int64Size + 12 + msgp.Int64Size + 11 + msgp.Uint64Size + 9 + msgp.Uint64Size + 8 + msgp.Uint64Size + 8 + msgp.BytesPrefixSize + len(z.Hashkey)
+func (z *RootRaw) Msgsize() (s int) {
+	s = 1 + 5 + z.Size.Msgsize() + 12 + z.BucketCount.Msgsize() + 11 + z.SplitIndex.Msgsize() + 9 + z.MaskHigh.Msgsize() + 8 + z.MaskLow.Msgsize() + 8 + msgp.BytesPrefixSize + len(z.HashKey)
 	return
 }

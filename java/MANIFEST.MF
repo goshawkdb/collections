@@ -1,0 +1,5 @@
+Name: io/goshawkdb/collections
+Specification-Title: GoshawkDB Collections
+Specification-Vendor: GoshawkDB
+Implementation-Title: io.goshawkdb.collections
+Implementation-Vendor: GoshawkDB

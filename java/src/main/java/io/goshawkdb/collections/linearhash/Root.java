@@ -51,22 +51,22 @@ final class Root {
                     final String key = unpacker.unpackString();
                     switch (key) {
                         case "Size":
-                            this.size = unpacker.unpackInt();
+                            size = unpacker.unpackInt();
                             break;
                         case "BucketCount":
-                            this.bucketCount = unpacker.unpackInt();
+                            bucketCount = unpacker.unpackInt();
                             break;
                         case "SplitIndex":
-                            this.splitIndex = unpacker.unpackBigInteger();
+                            splitIndex = unpacker.unpackBigInteger();
                             break;
                         case "MaskHigh":
-                            this.maskHigh = unpacker.unpackBigInteger();
+                            maskHigh = unpacker.unpackBigInteger();
                             break;
                         case "MaskLow":
-                            this.maskLow = unpacker.unpackBigInteger();
+                            maskLow = unpacker.unpackBigInteger();
                             break;
                         case "HashKey":
-                            this.hashkey = unpacker.readPayload(unpacker.unpackBinaryHeader());
+                            hashkey = unpacker.readPayload(unpacker.unpackBinaryHeader());
                             break;
                         default:
                             throw new IllegalArgumentException("Unexpected key in LinearHash root: " + key);

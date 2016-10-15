@@ -124,8 +124,8 @@ func BenchmarkDecodeBucket(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalRoot(t *testing.T) {
-	v := Root{}
+func TestMarshalUnmarshalRootRaw(t *testing.T) {
+	v := RootRaw{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -147,8 +147,8 @@ func TestMarshalUnmarshalRoot(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgRoot(b *testing.B) {
-	v := Root{}
+func BenchmarkMarshalMsgRootRaw(b *testing.B) {
+	v := RootRaw{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -156,8 +156,8 @@ func BenchmarkMarshalMsgRoot(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgRoot(b *testing.B) {
-	v := Root{}
+func BenchmarkAppendMsgRootRaw(b *testing.B) {
+	v := RootRaw{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -168,8 +168,8 @@ func BenchmarkAppendMsgRoot(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalRoot(b *testing.B) {
-	v := Root{}
+func BenchmarkUnmarshalRootRaw(b *testing.B) {
+	v := RootRaw{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -182,8 +182,8 @@ func BenchmarkUnmarshalRoot(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeRoot(t *testing.T) {
-	v := Root{}
+func TestEncodeDecodeRootRaw(t *testing.T) {
+	v := RootRaw{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
@@ -192,7 +192,7 @@ func TestEncodeDecodeRoot(t *testing.T) {
 		t.Logf("WARNING: Msgsize() for %v is inaccurate", v)
 	}
 
-	vn := Root{}
+	vn := RootRaw{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -206,8 +206,8 @@ func TestEncodeDecodeRoot(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeRoot(b *testing.B) {
-	v := Root{}
+func BenchmarkEncodeRootRaw(b *testing.B) {
+	v := RootRaw{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -220,8 +220,8 @@ func BenchmarkEncodeRoot(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeRoot(b *testing.B) {
-	v := Root{}
+func BenchmarkDecodeRootRaw(b *testing.B) {
+	v := RootRaw{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
