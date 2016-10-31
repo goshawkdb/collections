@@ -5,6 +5,7 @@ import com.zackehh.siphash.SipHash;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.function.BiConsumer;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
@@ -196,6 +197,32 @@ public class LinearHash {
                 }
                 root.bucketCount += cmr.chainDelta;
                 write();
+            }
+            return null;
+        });
+        if (!result.isSuccessful()) {
+            throw result.cause;
+        }
+    }
+
+    /**
+     * Iterate over the entries in the LinearHash. Iteration order is
+     * undefined. Also note that as usual, the transaction in which the
+     * iteration is occurring may need to restart one or more times in
+     * which case the callback may be invoked several times for the same
+     * entry. To detect this, call forEach from within a transaction of
+     * your own. Iteration will stop as soon as the callback throws an
+     * error, which will also abort the transaction.
+     *
+     * @param action The action to be performed for each entry
+     * @throws Exception if an unexpected error occurs during the transactions.
+     */
+    public void forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) throws Exception {
+        final TransactionResult<Object> result = conn.runTransaction(txn -> {
+            populate();
+            for (GoshawkObjRef objRef : refs) {
+                final Bucket b = Bucket.load(this, objRef);
+                b.forEach(action);
             }
             return null;
         });

@@ -39,7 +39,7 @@ func TestCreateNew(t *testing.T) {
 	assertSize(th, lh2, 0)
 }
 
-func TestPutGet(t *testing.T) {
+func TestPutGetForEach(t *testing.T) {
 	th := tests.NewTestHelper(t)
 	defer th.Shutdown()
 
@@ -99,7 +99,40 @@ func TestPutGet(t *testing.T) {
 	}
 	assertSize(th, lh, objCount)
 	end := time.Now()
-	th.Logf("Inserting: %v; fetching: %v", mid.Sub(start), end.Sub(mid))
+
+	_, _, err = lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
+		th.Log("foreach restart")
+		objsItr := make(map[string]bool, len(objs))
+		err := lh.ForEach(func(key []byte, objRef client.ObjectRef) error {
+			str := string(key)
+			th.Log("ForEach yields key", str)
+			if objsItr[str] {
+				return fmt.Errorf("ForEach yielded key %v twice!", str)
+			}
+			objsItr[str] = true
+			ref, found := objs[str]
+			if !found {
+				return fmt.Errorf("ForEach yielded unknown key: %v", str)
+			}
+			if !objRef.ReferencesSameAs(ref) {
+				return fmt.Errorf("ForEach yielded unexpected value for key: %v (expected %v; actual %v)", str, ref, objRef)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(objsItr) != len(objs) {
+			return nil, fmt.Errorf("ForEach yielded incorrect number of values: %v vs %v", len(objsItr), len(objs))
+		}
+		return nil, nil
+	})
+	if err != nil {
+		th.Fatal(err)
+	}
+	forEachEnd := time.Now()
+
+	th.Logf("Inserting: %v; fetching: %v; forEach: %v", mid.Sub(start), end.Sub(mid), forEachEnd.Sub(end))
 }
 
 func TestSoak(t *testing.T) {

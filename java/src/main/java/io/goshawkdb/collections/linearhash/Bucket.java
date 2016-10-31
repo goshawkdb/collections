@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.function.BiConsumer;
 
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.client.TransactionAbortedException;
@@ -224,6 +225,19 @@ final class Bucket {
                 write(true);
                 return new ChainMutationResult(this, true, 0);
             }
+        }
+    }
+
+    void forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
+        for (int idx = 0; idx < entries.length; idx++) {
+            if (isSlotEmpty(idx)) {
+                continue;
+            }
+            action.accept(entries[idx], refs.get(idx + 1));
+        }
+        final Bucket b = next();
+        if (b != null) {
+            b.forEach(action);
         }
     }
 

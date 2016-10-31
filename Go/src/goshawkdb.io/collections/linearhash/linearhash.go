@@ -224,6 +224,34 @@ func (lh *LHash) Remove(key []byte) error {
 	return err
 }
 
+// Iterate over the entries in the LHash. Iteration order is
+// undefined. Also note that as usual, the transaction in which the
+// iteration is occurring may need to restart one or more times in
+// which case the callback may be invoked several times for the same
+// entry. To detect this, call ForEach from within a transaction of
+// your own. Iteration will stop as soon as the callback returns a
+// non-nil error, which will also abort the transaction.
+func (lh *LHash) ForEach(f func([]byte, client.ObjectRef) error) error {
+	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
+		err := lh.populate()
+		if err != nil {
+			return nil, err
+		}
+		for _, objRef := range lh.refs {
+			bucket, err := lh.newBucket(objRef)
+			if err != nil {
+				return nil, err
+			}
+			err = bucket.forEach(f)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	})
+	return err
+}
+
 // Returns the number of entries in the LHash.
 func (lh *LHash) Size() (int64, error) {
 	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
@@ -580,6 +608,24 @@ func (b *bucket) remove(key []byte) (bNew *bucket, removed bool, chainDelta int6
 				return
 			}
 		}
+	}
+}
+
+func (b *bucket) forEach(f func([]byte, client.ObjectRef) error) error {
+	for idx, k := range ([][]byte)(*b.entries) {
+		if b.isSlotEmpty(idx) {
+			continue
+		}
+		if err := f(k, b.refs[idx+1]); err != nil {
+			return err
+		}
+	}
+	if bNext, err := b.next(); err != nil {
+		return err
+	} else if bNext != nil {
+		return bNext.forEach(f)
+	} else {
+		return nil
 	}
 }
 

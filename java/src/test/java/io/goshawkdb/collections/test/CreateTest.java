@@ -11,7 +11,9 @@ import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
@@ -49,7 +51,7 @@ public class CreateTest extends TestBase {
     }
 
     @Test
-    public void putGetTest() throws Exception {
+    public void putGetTestForEach() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
             final LinearHash lh = create(c);
@@ -97,8 +99,35 @@ public class CreateTest extends TestBase {
                     throw new RuntimeException(e);
                 }
             });
-
             assertSize(lh, objCount);
+
+            final TransactionResult<Object> r2 = lh.conn.runTransaction(txn -> {
+                final Set<String> covered = new HashSet<String>();
+                try {
+                    lh.forEach((key, value) -> {
+                        final String str = new String(key);
+                        if (covered.contains(str)) {
+                            fail("forEach yielded key twice! " + str);
+                        }
+                        covered.add(str);
+                        final GoshawkObjRef ref = m.get(str);
+                        if (m == null) {
+                            fail("forEach yielded unknown key: " + str);
+                        } else if (!ref.referencesSameAs(value)) {
+                            fail("forEach yielded unexpected value for key " + str + " (expected " + ref + "; actual " + value + ")");
+                        }
+                    });
+                } catch (Exception e) {
+                    throw new TransactionAbortedException(e);
+                }
+                if (covered.size() != m.size()) {
+                    fail("forEach yielded incorrect number of entries: " + covered.size() + " vs " + m.size());
+                }
+                return null;
+            });
+            if (!r2.isSuccessful()) {
+                throw r2.cause;
+            }
         } finally {
             shutdown();
         }
