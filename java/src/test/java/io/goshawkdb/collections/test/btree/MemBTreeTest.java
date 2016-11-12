@@ -1,4 +1,4 @@
-package io.goshawkdb.collections.test;
+package io.goshawkdb.collections.test.btree;
 
 import io.goshawkdb.collections.btree.MemBTree;
 import org.junit.Test;
@@ -25,17 +25,13 @@ public class MemBTreeTest {
     private void bruteForceTest(int n, int order) {
         forEachPerm(n, p -> {
             final MemBTree t = new MemBTree(order);
-            try {
-                for (int i = 0; i < n; i++) {
-                    t.put(i, i);
-                    t.checkInvariants();
-                }
-                assertThat(t.count(), equalTo(n));
-                for (int i = 0; i < n; i++) {
-                    assertThat(t.find(i), equalTo(i));
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            for (int i = 0; i < n; i++) {
+                t.put(i, i);
+                t.checkInvariants();
+            }
+            assertThat(t.count(), equalTo(n));
+            for (int i = 0; i < n; i++) {
+                assertThat(t.find(i), equalTo(i));
             }
         });
     }

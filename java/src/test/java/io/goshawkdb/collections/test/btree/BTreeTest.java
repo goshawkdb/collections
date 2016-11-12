@@ -1,4 +1,4 @@
-package io.goshawkdb.collections.test;
+package io.goshawkdb.collections.test.btree;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
