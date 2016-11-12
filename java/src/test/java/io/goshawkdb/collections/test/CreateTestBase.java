@@ -58,7 +58,7 @@ public abstract class CreateTestBase<T> extends TestBase {
             int objCount = 1024;
             // create objs
             TransactionResult<Map<String, GoshawkObjRef>> r0 = c.runTransaction(txn -> {
-                final Map<String, GoshawkObjRef> m = new HashMap<String, GoshawkObjRef>();
+                final Map<String, GoshawkObjRef> m = new HashMap<>();
                 for (int idx = 0; idx < objCount; idx++) {
                     final String str = "" + idx;
                     final GoshawkObjRef objRef = txn.createObject(ByteBuffer.wrap(str.getBytes()));
@@ -101,7 +101,7 @@ public abstract class CreateTestBase<T> extends TestBase {
             assertSize(collection, objCount);
 
             final TransactionResult<Object> r2 = c.runTransaction(txn -> {
-                final Set<String> covered = new HashSet<String>();
+                final Set<String> covered = new HashSet<>();
                 try {
                     forEach(collection, (key, value) -> {
                         final String str = new String(key);
@@ -110,7 +110,7 @@ public abstract class CreateTestBase<T> extends TestBase {
                         }
                         covered.add(str);
                         final GoshawkObjRef ref = m.get(str);
-                        if (m == null) {
+                        if (ref == null) {
                             fail("forEach yielded unknown key: " + str);
                         } else if (!ref.referencesSameAs(value)) {
                             fail("forEach yielded unexpected value for key " + str + " (expected " + ref + "; actual " + value + ")");
