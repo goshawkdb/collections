@@ -89,7 +89,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
             if (newChildren.count() > maxNonLeafChildren) {
                 return split(node, newKeys, newVals, newChildren, minNonLeafChildren - 1);
             }
-            checkSizesNonLeaf(newKeys, newVals, newChildren);
+            checkSizesNonLeaf(isRoot, newKeys, newVals, newChildren);
         }
         node.update(newKeys, newVals, newChildren);
         return null;
@@ -109,8 +109,8 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         } else {
             sibChildren = newChildren.sliceTo(median + 1);
             myChildren = newChildren.sliceFrom(median + 1);
-            checkSizesNonLeaf(sibKeys, sibVals, sibChildren);
-            checkSizesNonLeaf(myKeys, myVals, myChildren);
+            checkSizesNonLeaf(false, sibKeys, sibVals, sibChildren);
+            checkSizesNonLeaf(false, myKeys, myVals, myChildren);
         }
         final N sib = node.createSibling(sibKeys, sibVals, sibChildren);
         node.update(myKeys, myVals, myChildren);
@@ -129,11 +129,11 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         }
     }
 
-    private void checkSizesNonLeaf(ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
+    private void checkSizesNonLeaf(boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
         if (values.count() != keys.count()) {
             throw new IllegalStateException("wrong number of values");
         }
-        if (children.count() < minNonLeafChildren || children.count() > maxNonLeafChildren) {
+        if (!isRoot && (children.count() < minNonLeafChildren || children.count() > maxNonLeafChildren)) {
             throw new IllegalStateException(String.format("wrong number of children: expected %d to %d, got %d",
                     minNonLeafChildren, maxNonLeafChildren, children.count()));
         }

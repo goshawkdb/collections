@@ -56,7 +56,7 @@ public class BTree {
     }
 
     private AbstractBTree<byte[], GoshawkObjRef, NodeImpl> tree() {
-        return new AbstractBTree<>(3, toNode(root), Lexicographic.INSTANCE);
+        return new AbstractBTree<>(64, toNode(root), Lexicographic.INSTANCE);
     }
 
     public void put(byte[] key, GoshawkObjRef value) {
