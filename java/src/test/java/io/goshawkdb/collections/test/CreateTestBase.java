@@ -1,5 +1,10 @@
 package io.goshawkdb.collections.test;
 
+import io.goshawkdb.client.Connection;
+import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionAbortedException;
+import io.goshawkdb.client.TransactionResult;
+import io.goshawkdb.test.TestBase;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -14,37 +19,31 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
-import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionAbortedException;
-import io.goshawkdb.client.TransactionResult;
-import io.goshawkdb.collections.linearhash.LinearHash;
-import io.goshawkdb.test.TestBase;
-
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class CreateTest extends TestBase {
-
-    public CreateTest() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
+public abstract class CreateTestBase<T> extends TestBase {
+    protected CreateTestBase() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
         super();
     }
 
-    private LinearHash create(final Connection c) throws Exception {
-        return LinearHash.createEmpty(c);
-    }
+    protected abstract T create(final Connection c) throws Exception;
 
-    private void assertSize(final LinearHash lh, final int expected) throws Exception {
-        assertEquals(expected, lh.size());
-    }
+    protected abstract void assertSize(T collection, final int expected) throws Exception;
+
+    protected abstract void put(T collection, byte[] bytes, GoshawkObjRef value) throws Exception;
+
+    protected abstract GoshawkObjRef find(T collection, byte[] bytes) throws Exception;
+
+    protected abstract void forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action) throws Exception;
 
     @Test
     public void createNewTest() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            final LinearHash lh = create(c);
-            assertSize(lh, 0);
+            final T collection = create(c);
+            assertSize(collection, 0);
         } finally {
             shutdown();
         }
@@ -54,7 +53,7 @@ public class CreateTest extends TestBase {
     public void putGetTestForEach() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            final LinearHash lh = create(c);
+            final T collection = create(c);
 
             int objCount = 1024;
             // create objs
@@ -75,7 +74,7 @@ public class CreateTest extends TestBase {
                 m.forEach((key, value) -> {
                     value = txn.getObject(value);
                     try {
-                        lh.put(key.getBytes(), value);
+                        put(collection, key.getBytes(), value);
                     } catch (Exception e) {
                         throw new TransactionAbortedException(e);
                     }
@@ -85,11 +84,11 @@ public class CreateTest extends TestBase {
             if (!r1.isSuccessful()) {
                 throw r1.cause;
             }
-            assertSize(lh, objCount);
+            assertSize(collection, objCount);
 
             m.forEach((key, value) -> {
                 try {
-                    final GoshawkObjRef objRefFound = lh.find(key.getBytes());
+                    final GoshawkObjRef objRefFound = find(collection, key.getBytes());
                     if (objRefFound == null) {
                         fail("Failed to find entry for " + key);
                     } else if (!objRefFound.referencesSameAs(value)) {
@@ -99,12 +98,12 @@ public class CreateTest extends TestBase {
                     throw new RuntimeException(e);
                 }
             });
-            assertSize(lh, objCount);
+            assertSize(collection, objCount);
 
-            final TransactionResult<Object> r2 = lh.conn.runTransaction(txn -> {
+            final TransactionResult<Object> r2 = c.runTransaction(txn -> {
                 final Set<String> covered = new HashSet<String>();
                 try {
-                    lh.forEach((key, value) -> {
+                    forEach(collection, (key, value) -> {
                         final String str = new String(key);
                         if (covered.contains(str)) {
                             fail("forEach yielded key twice! " + str);
@@ -132,4 +131,5 @@ public class CreateTest extends TestBase {
             shutdown();
         }
     }
+
 }

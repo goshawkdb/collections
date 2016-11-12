@@ -13,6 +13,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.BiConsumer;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
@@ -21,17 +22,24 @@ import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.test.TestBase;
 
-public class SoakTest extends TestBase {
-
-    public SoakTest() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
+public abstract class SoakTestBase<T> extends TestBase {
+    protected SoakTestBase() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
         super();
     }
+
+    protected abstract T create(final Connection c) throws Exception;
+
+    protected abstract void put(T collection, byte[] bytes, GoshawkObjRef value) throws Exception;
+
+    protected abstract GoshawkObjRef find(T collection, byte[] bytes) throws Exception;
+
+    protected abstract void remove(T collection, byte[] bytes) throws Exception;
 
     @Test
     public void soak() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            LinearHash lh = LinearHash.createEmpty(c);
+            T collection = create(c);
 
             final long seed = System.nanoTime();
             final Random rng = new Random(seed);
@@ -50,17 +58,17 @@ public class SoakTest extends TestBase {
                 }
 
                 if (op == -1) { // reset
-                    lh = LinearHash.createEmpty(c);
+                    collection = create(c);
                     contents.clear();
 
                 } else if (op < -1) { // add new key
                     final String key = String.valueOf(contentsSize);
                     final String value = "Hello" + i + "-" + key;
-                    final LinearHash finalLh = lh;
-                    TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+                    final T finalCollection = collection;
+                    TransactionResult<Object> result = c.runTransaction(txn -> {
                         GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
                         try {
-                            finalLh.put(key.getBytes(), valueObj);
+                            put(finalCollection, key.getBytes(), valueObj);
                         } catch (Exception e) {
                             throw new TransactionAbortedException(e);
                         }
@@ -77,10 +85,10 @@ public class SoakTest extends TestBase {
                             final String key = String.valueOf(opArg);
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
-                            final LinearHash finalLh = lh;
-                            final TransactionResult<String> result = lh.conn.runTransaction(txn -> {
+                            final T finalCollection = collection;
+                            final TransactionResult<String> result = c.runTransaction(txn -> {
                                 try {
-                                    final GoshawkObjRef valueObj = finalLh.find(key.getBytes());
+                                    final GoshawkObjRef valueObj = find(finalCollection, key.getBytes());
                                     if (valueObj == null) {
                                         return null;
                                     } else {
@@ -106,7 +114,7 @@ public class SoakTest extends TestBase {
                             final String key = String.valueOf(opArg);
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
-                            lh.remove(key.getBytes());
+                            remove(collection, key.getBytes());
                             if (inContents) {
                                 contents.put(key, "");
                             }
@@ -122,11 +130,11 @@ public class SoakTest extends TestBase {
                                 contents.put(key, value);
                             }
                             final String finalValue = value;
-                            final LinearHash finalLh = lh;
-                            final TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+                            final T finalCollection = collection;
+                            final TransactionResult<Object> result = c.runTransaction(txn -> {
                                 GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
                                 try {
-                                    finalLh.put(key.getBytes(), valueObj);
+                                    put(finalCollection, key.getBytes(), valueObj);
                                 } catch (Exception e) {
                                     throw new TransactionAbortedException(e);
                                 }
