@@ -30,6 +30,14 @@ interface ArrayLike<T> {
         return a;
     }
 
+    default T last() {
+        return get(count() - 1);
+    }
+
+    default T first() {
+        return get(0);
+    }
+
     // transforms
 
     default <U> ArrayLike<U> map(Function<T, U> f) {
@@ -44,8 +52,12 @@ interface ArrayLike<T> {
         return new Slice<>(this, 0, i);
     }
 
-    default ArrayLike<T> splice(int i, T t) {
+    default ArrayLike<T> spliceIn(int i, T t) {
         return sliceTo(i).concat(wrap(t)).concat(sliceFrom(i));
+    }
+
+    default ArrayLike<T> spliceOut(int i) {
+        return sliceTo(i).concat(sliceFrom(i + 1));
     }
 
     default ArrayLike<T> concat(ArrayLike<T> other) {
@@ -54,6 +66,14 @@ interface ArrayLike<T> {
 
     default ArrayLike<T> with(int i, T value) {
         return new With<>(this, i, value);
+    }
+
+    default ArrayLike<T> withoutLast() {
+        return sliceTo(count() - 1);
+    }
+
+    default ArrayLike<T> withoutFirst() {
+        return sliceFrom(1);
     }
 
     // constructors
@@ -93,10 +113,13 @@ interface ArrayLike<T> {
         final int to;
 
         Slice(ArrayLike<T> delegate, int from, int to) {
+            if (from < 0) {
+                throw new IllegalArgumentException();
+            }
             this.delegate = delegate;
-            this.from = from >= 0 ? from : 0;
             final int n = delegate.count();
             this.to = to <= n ? to : n;
+            this.from = from <= to ? from : to;
         }
 
         @Override

@@ -56,7 +56,7 @@ public class BTree {
     }
 
     private AbstractBTree<byte[], GoshawkObjRef, NodeImpl> tree() {
-        return new AbstractBTree<>(64, toNode(root), Lexicographic.INSTANCE);
+        return new AbstractBTree<>(128, toNode(root), Lexicographic.INSTANCE);
     }
 
     public void put(byte[] key, GoshawkObjRef value) {
@@ -69,6 +69,10 @@ public class BTree {
 
     public void forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
         tree().forEach(action);
+    }
+
+    public void remove(byte[] key) {
+        tree().remove(key);
     }
 
     class NodeImpl implements Node<byte[], GoshawkObjRef, NodeImpl> {

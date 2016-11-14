@@ -51,7 +51,10 @@ public class SoakTest extends SoakTestBase<SoakTest.ConnAndRef> {
     }
 
     @Override
-    protected void remove(ConnAndRef collection, byte[] bytes) throws Exception {
-
+    protected void remove(ConnAndRef cr, byte[] bytes) throws Exception {
+        runTransaction(cr.conn, txn -> {
+            cr.getTree(txn).remove(bytes);
+            return null;
+        });
     }
 }

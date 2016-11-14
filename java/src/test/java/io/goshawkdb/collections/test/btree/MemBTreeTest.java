@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -14,9 +15,23 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class MemBTreeTest {
     @Test
+    public void testRemove() throws Exception {
+        for (int height = 1; height <= 3; height++) {
+            MemBTree.allTrees(3, height, 0, (t, n) -> {
+                for (int key = 0; key < n; key++) {
+                    final MemBTree<Integer> t1 = t.copy();
+                    t1.remove(key);
+                    t1.checkInvariants();
+                    assertThat(t1.count(), equalTo(n - 1));
+                }
+            });
+        }
+    }
+
+    @Test
     public void bruteForceTest() throws IOException {
-        for (int n = 2; n < 9; n++) {
-            for (int order = 2; order <= n + 1; order++) {
+        for (int n = 3; n < 9; n++) {
+            for (int order = 3; order <= n + 1; order++) {
                 bruteForceTest(n, order);
             }
         }
@@ -24,7 +39,7 @@ public class MemBTreeTest {
 
     private void bruteForceTest(int n, int order) {
         forEachPerm(n, p -> {
-            final MemBTree t = new MemBTree(order);
+            final MemBTree<Integer> t = new MemBTree<>(order, Comparator.<Integer>naturalOrder());
             for (int i = 0; i < n; i++) {
                 t.put(i, i);
                 t.checkInvariants();
@@ -48,6 +63,9 @@ public class MemBTreeTest {
         assertThat(perms.get(3), equalTo(new int[]{1, 2, 0}));
         assertThat(perms.get(4), equalTo(new int[]{2, 0, 1}));
         assertThat(perms.get(5), equalTo(new int[]{2, 1, 0}));
+        final int[] n = new int[]{0};
+        forEachPerm(6, p -> n[0]++);
+        assertThat(n[0], equalTo(720));
     }
 
     private void forEachPerm(int n, Consumer<int[]> f) {

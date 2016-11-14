@@ -13,13 +13,11 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-import java.util.function.BiConsumer;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.client.TransactionAbortedException;
 import io.goshawkdb.client.TransactionResult;
-import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.test.TestBase;
 
 public abstract class SoakTestBase<T> extends TestBase {
