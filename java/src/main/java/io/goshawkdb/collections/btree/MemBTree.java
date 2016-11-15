@@ -143,9 +143,9 @@ public class MemBTree<K> {
 
         @Override
         public void update(ArrayLike<K> newKeys, ArrayLike<Object> newVals, ArrayLike<NodeImpl<K>> newChildren) {
-            keys = newKeys;
-            values = newVals;
-            children = newChildren;
+            keys = newKeys.copy();
+            values = newVals.copy();
+            children = newChildren.copy();
         }
 
         @Override
@@ -192,12 +192,7 @@ public class MemBTree<K> {
         }
 
         NodeImpl<K> copy() {
-            return new NodeImpl<>(cheatingCopy(keys), cheatingCopy(values), cheatingCopy(children.map(NodeImpl::copy)));
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> ArrayLike<T> cheatingCopy(ArrayLike<T> xs) {
-            return wrap(xs.map(x -> (Object) x).copyOut(Object.class)).map(x -> (T) x);
+            return new NodeImpl<>(keys.copy(), values.copy(), children.map(NodeImpl::copy).copy());
         }
     }
 }

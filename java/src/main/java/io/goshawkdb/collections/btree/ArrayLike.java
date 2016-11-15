@@ -9,16 +9,19 @@ interface ArrayLike<T> {
 
     T get(int i);
 
-    default int copyTo(T[] arr, int i) {
-        return fold((x, j) -> {
-            arr[j] = x;
-            return j + 1;
-        }, i);
+    default ArrayLike<T> copy() {
+        final int n = count();
+        final Object[] arr = new Object[n];
+        copyTo(0, arr, 0, n);
+        return new ArrayWrapper<>(arr);
     }
 
+    void copyTo(int srcPos, Object[] dst, int dstPos, int length);
+
     default T[] copyOut(Class<T> c) {
-        @SuppressWarnings("unchecked") final T[] ts = (T[]) Array.newInstance(c, count());
-        copyTo(ts, 0);
+        final int n = count();
+        @SuppressWarnings("unchecked") final T[] ts = (T[]) Array.newInstance(c, n);
+        copyTo(0, ts, 0, n);
         return ts;
     }
 
@@ -90,20 +93,32 @@ interface ArrayLike<T> {
     class Mapped<T, U> implements ArrayLike<U> {
         final ArrayLike<T> delegate;
         final Function<T, U> f;
+        final int count;
 
         Mapped(ArrayLike<T> delegate, Function<T, U> f) {
             this.delegate = delegate;
             this.f = f;
+            this.count = delegate.count();
         }
 
         @Override
         public int count() {
-            return delegate.count();
+            return count;
         }
 
         @Override
         public U get(int i) {
             return f.apply(delegate.get(i));
+        }
+
+        @Override
+        public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
+            if (srcPos + length > count) {
+                length = count - srcPos;
+            }
+            for (int i = 0; i < length; i++) {
+                dst[dstPos + i] = get(srcPos + i);
+            }
         }
     }
 
@@ -134,6 +149,17 @@ interface ArrayLike<T> {
             }
             throw new IndexOutOfBoundsException();
         }
+
+        @Override
+        public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
+            if (from + srcPos > to) {
+                return;
+            }
+            if (from + srcPos + length > to) {
+                length = to - from - srcPos;
+            }
+            delegate.copyTo(from + srcPos, dst, dstPos, length);
+        }
     }
 
     class ArrayWrapper<T> implements ArrayLike<T> {
@@ -152,6 +178,11 @@ interface ArrayLike<T> {
         @Override
         public T get(int i) {
             return (T)ts[i];
+        }
+
+        @Override
+        public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
+            System.arraycopy(ts, srcPos, dst, dstPos, length);
         }
     }
 
@@ -178,29 +209,52 @@ interface ArrayLike<T> {
             }
             return delegate.get(j);
         }
+
+        @Override
+        public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
+            delegate.copyTo(srcPos, dst, dstPos, length);
+            dst[srcPos + i] = t;
+        }
     }
 
     class Concat<T> implements ArrayLike<T> {
         final ArrayLike<T> first;
         final ArrayLike<T> second;
+        final int firstCount;
+        final int secondCount;
 
         Concat(ArrayLike<T> first, ArrayLike<T> second) {
             this.first = first;
             this.second = second;
+            this.firstCount = first.count();
+            this.secondCount = second.count();
         }
 
         @Override
         public int count() {
-            return first.count() + second.count();
+            return firstCount + secondCount;
         }
 
         @Override
         public T get(int i) {
-            final int n = first.count();
-            if (i < n) {
+            if (i < firstCount) {
                 return first.get(i);
             }
-            return second.get(i - n);
+            return second.get(i - firstCount);
+        }
+
+        @Override
+        public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
+            if (srcPos >= firstCount) {
+                second.copyTo(srcPos - firstCount, dst, dstPos, length);
+                return;
+            }
+            final int l1 = firstCount - srcPos;
+            final int l2 = l1 > length ? length : l1;
+            first.copyTo(srcPos, dst, dstPos, l2);
+            if (length > l2) {
+                second.copyTo(0, dst, dstPos + l2, length - l2);
+            }
         }
     }
 }
