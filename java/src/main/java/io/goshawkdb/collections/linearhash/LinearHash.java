@@ -188,7 +188,7 @@ public class LinearHash {
             final Bucket.ChainMutationResult cmr = b.remove(key);
             if (cmr.done || cmr.chainDelta != 0) {
                 if (cmr.b == null) { // must keep old bucket even though it's empty
-                    cmr.b.write(true);
+                    b.write(true);
                 } else if (cmr.b != b) {
                     refs[idx] = cmr.b.objRef;
                 }

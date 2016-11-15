@@ -34,6 +34,7 @@ public class SoakTest extends TestBase {
             LinearHash lh = LinearHash.createEmpty(c);
 
             final long seed = System.nanoTime();
+            System.out.println("Seed: "+ seed);
             final Random rng = new Random(seed);
             // we use contents to mirror the state of the LHash
             final Map<String, String> contents = new HashMap<String, String>();

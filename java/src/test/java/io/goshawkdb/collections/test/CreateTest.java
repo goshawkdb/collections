@@ -111,7 +111,7 @@ public class CreateTest extends TestBase {
                         }
                         covered.add(str);
                         final GoshawkObjRef ref = m.get(str);
-                        if (m == null) {
+                        if (ref == null) {
                             fail("forEach yielded unknown key: " + str);
                         } else if (!ref.referencesSameAs(value)) {
                             fail("forEach yielded unexpected value for key " + str + " (expected " + ref + "; actual " + value + ")");
