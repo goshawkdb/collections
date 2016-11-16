@@ -4,16 +4,41 @@ import io.goshawkdb.collections.btree.MemBTree;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class MemBTreeTest {
+    @Test
+    public void testPutSimple() throws Exception {
+        final MemBTree<Integer> t = new MemBTree<>(3, Comparator.<Integer>naturalOrder());
+        assertThat(toListViaForeach(t)).containsExactly();
+        for (int i = 0; i < 10; i++) {
+            t.put(i, 100 + i);
+        }
+        assertThat(toListViaForeach(t))
+                .containsExactly(0, 100, 1, 101, 2, 102, 3, 103, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9, 109);
+        t.put(3, 300);
+        assertThat(toListViaForeach(t))
+                .containsExactly(0, 100, 1, 101, 2, 102, 3, 300, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9, 109);
+    }
+
+    private List<Object> toListViaForeach(MemBTree<Integer> t) {
+        final ArrayList<Object> r = new ArrayList<>();
+        t.forEach((k, v) -> {
+            r.add(k);
+            r.add(v);
+        });
+        return r;
+    }
+
     @Test
     public void testRemove() throws Exception {
         for (int height = 1; height <= 3; height++) {

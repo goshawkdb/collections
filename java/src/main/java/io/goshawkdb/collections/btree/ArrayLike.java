@@ -114,7 +114,7 @@ interface ArrayLike<T> {
         @Override
         public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
             if (srcPos + length > count) {
-                length = count - srcPos;
+                throw new IndexOutOfBoundsException();
             }
             for (int i = 0; i < length; i++) {
                 dst[dstPos + i] = get(srcPos + i);
@@ -133,7 +133,10 @@ interface ArrayLike<T> {
             }
             this.delegate = delegate;
             final int n = delegate.count();
-            this.to = to <= n ? to : n;
+            if (to > n) {
+                to = n;
+            }
+            this.to = to;
             this.from = from <= to ? from : to;
         }
 
@@ -152,11 +155,8 @@ interface ArrayLike<T> {
 
         @Override
         public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
-            if (from + srcPos > to) {
-                return;
-            }
             if (from + srcPos + length > to) {
-                length = to - from - srcPos;
+                throw new IndexOutOfBoundsException();
             }
             delegate.copyTo(from + srcPos, dst, dstPos, length);
         }
