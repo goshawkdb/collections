@@ -47,7 +47,7 @@ public class MemBTreeTest {
                     final MemBTree<Integer> t1 = t.copy();
                     t1.remove(key);
                     t1.checkInvariants();
-                    assertThat(t1.count(), equalTo(n - 1));
+                    assertThat(t1.size(), equalTo(n - 1));
                 }
             });
         }
@@ -69,7 +69,7 @@ public class MemBTreeTest {
                 t.put(i, i);
                 t.checkInvariants();
             }
-            assertThat(t.count(), equalTo(n));
+            assertThat(t.size(), equalTo(n));
             for (int i = 0; i < n; i++) {
                 assertThat(t.find(i), equalTo(i));
             }

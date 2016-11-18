@@ -44,7 +44,7 @@ public class CreateTest extends CreateTestBase<CreateTest.ConnAndRef> {
     @Override
     protected void assertSize(ConnAndRef cr, int expected) throws Exception {
         runTransaction(cr.conn, txn -> {
-            assertThat(cr.getTree(txn).count(), equalTo(expected));
+            assertThat(cr.getTree(txn).size(), equalTo(expected));
             return null;
         });
     }

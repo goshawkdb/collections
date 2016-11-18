@@ -8,7 +8,7 @@ interface Node<K, V, Self extends Node<K, V, Self>> {
     ArrayLike<V> getValues();
 
     default boolean isLeaf() {
-        return getChildren().count() == 0;
+        return getChildren().size() == 0;
     }
 
     void update(ArrayLike<K> newKeys, ArrayLike<V> newVals, ArrayLike<Self> newChildren);

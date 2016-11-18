@@ -31,16 +31,16 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         return (n / 2) + (n % 2);
     }
 
-    int count() {
-        return count(root);
+    int size() {
+        return size(root);
     }
 
-    private int count(N node) {
-        return node.getChildren().fold((child, n) -> n + count(child), node.getKeys().count());
+    private int size(N node) {
+        return node.getChildren().fold((child, n) -> n + size(child), node.getKeys().size());
     }
 
     private Lub findLub(final N node, final K key) {
-        final int n = node.getKeys().count();
+        final int n = node.getKeys().size();
         for (int i = 0; i < n; i++) {
             final int c = comparator.compare(key, node.getKeys().get(i));
             if (c <= 0) {
@@ -88,12 +88,12 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final ArrayLike<N> newChildren = child == null ? node.getChildren() : node.getChildren().spliceIn(i, child);
         if (child == null) {
             // leaf
-            if (newKeys.count() > maxLeafKeys) {
+            if (newKeys.size() > maxLeafKeys) {
                 return split(node, newKeys, newVals, null, minLeafKeys);
             }
             checkSizesLeaf(isRoot, newKeys, newVals, newChildren);
         } else {
-            if (newChildren.count() > maxNonLeafChildren) {
+            if (newChildren.size() > maxNonLeafChildren) {
                 return split(node, newKeys, newVals, newChildren, minNonLeafChildren - 1);
             }
             checkSizesNonLeaf(isRoot, newKeys, newVals, newChildren);
@@ -125,26 +125,26 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
     }
 
     private void checkSizesLeaf(boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
-        if (values.count() != keys.count()) {
+        if (values.size() != keys.size()) {
             throw new IllegalStateException("wrong number of values");
         }
-        if (!isRoot && (keys.count() < minLeafKeys || keys.count() > maxLeafKeys)) {
+        if (!isRoot && (keys.size() < minLeafKeys || keys.size() > maxLeafKeys)) {
             throw new IllegalStateException("wrong number of keys");
         }
-        if (children.count() != 0) {
+        if (children.size() != 0) {
             throw new IllegalStateException("wrong number of children");
         }
     }
 
     private void checkSizesNonLeaf(boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
-        if (values.count() != keys.count()) {
+        if (values.size() != keys.size()) {
             throw new IllegalStateException("wrong number of values");
         }
-        if (!isRoot && (children.count() < minNonLeafChildren || children.count() > maxNonLeafChildren)) {
+        if (!isRoot && (children.size() < minNonLeafChildren || children.size() > maxNonLeafChildren)) {
             throw new IllegalStateException(String.format("wrong number of children: expected %d to %d, got %d",
-                    minNonLeafChildren, maxNonLeafChildren, children.count()));
+                    minNonLeafChildren, maxNonLeafChildren, children.size()));
         }
-        if (children.count() != keys.count() + 1) {
+        if (children.size() != keys.size() + 1) {
             throw new IllegalStateException("wrong number of children");
         }
     }
@@ -163,7 +163,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
     }
 
     private void forEach(N node, BiConsumer<? super K, ? super V> action) {
-        final int n = node.getKeys().count();
+        final int n = node.getKeys().size();
         for (int i = 0; i < n; i++) {
             if (!node.isLeaf()) {
                 forEach(node.getChildren().get(i), action);
@@ -181,7 +181,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
 
     void remove(K key) {
         remove(root, key, true);
-        if (root.getChildren().count() == 1) {
+        if (root.getChildren().size() == 1) {
             final N child = root.getChildren().first();
             root.update(child.getKeys(), child.getValues(), child.getChildren());
         }
@@ -193,7 +193,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         if (node.isLeaf()) {
             if (lub.exact) {
                 node.update(node.getKeys().spliceOut(lub.i), node.getValues().spliceOut(lub.i), empty());
-                return node.getKeys().count() < minLeafKeys;
+                return node.getKeys().size() < minLeafKeys;
             }
             // key wasn't there, but on the plus side, no re-balancing is needed!
             return false;
@@ -216,10 +216,10 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
 
     private boolean fixUnderflow(N node, int i, boolean isRoot) {
         final N child = node.getChildren().get(i);
-        if (child.isLeaf() && child.getKeys().count() >= minLeafKeys) {
+        if (child.isLeaf() && child.getKeys().size() >= minLeafKeys) {
             throw new IllegalStateException("there was no underflow");
         }
-        if (!child.isLeaf() && child.getChildren().count() >= minNonLeafChildren) {
+        if (!child.isLeaf() && child.getChildren().size() >= minNonLeafChildren) {
             throw new IllegalStateException("there was no underflow");
         }
         final boolean hasLeftSibling = i > 0;
@@ -227,7 +227,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
             rotateClockwise(node, i - 1);
             return false;
         }
-        final boolean hasRightSibling = i + 1 < node.getChildren().count();
+        final boolean hasRightSibling = i + 1 < node.getChildren().size();
         if (hasRightSibling && hasSpare(node.getChildren().get(i + 1))) {
             rotateAnticlockwise(node, i);
             return false;
@@ -315,36 +315,36 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final ArrayLike<K> newKeys = node.getKeys().spliceOut(i);
         final ArrayLike<V> newVals = node.getValues().spliceOut(i);
         final ArrayLike<N> newChildren = node.getChildren().spliceOut(i + 1);
-        if (newVals.count() != newKeys.count()) {
+        if (newVals.size() != newKeys.size()) {
             throw new IllegalStateException("wrong number of values");
         }
-        if (newChildren.count() > maxNonLeafChildren) {
+        if (newChildren.size() > maxNonLeafChildren) {
             throw new IllegalStateException(String.format("wrong number of children: expected %d to %d, got %d",
-                    minNonLeafChildren, maxNonLeafChildren, newChildren.count()));
+                    minNonLeafChildren, maxNonLeafChildren, newChildren.size()));
         }
-        if (newChildren.count() != newKeys.count() + 1) {
+        if (newChildren.size() != newKeys.size() + 1) {
             throw new IllegalStateException("wrong number of children");
         }
         node.update(newKeys, newVals, newChildren);
-        return newChildren.count() < minNonLeafChildren;
+        return newChildren.size() < minNonLeafChildren;
     }
 
     private boolean hasSpare(N n) {
         if (n.isLeaf()) {
-            return n.getKeys().count() > minLeafKeys;
+            return n.getKeys().size() > minLeafKeys;
         }
-        return n.getChildren().count() > minNonLeafChildren;
+        return n.getChildren().size() > minNonLeafChildren;
     }
 
     private Pop pop(N node) {
         if (node.isLeaf()) {
-            final int n = node.getKeys().count() - 1;
+            final int n = node.getKeys().size() - 1;
             final K key = node.getKeys().get(n);
             final V val = node.getValues().get(n);
             node.update(node.getKeys().sliceTo(n), node.getValues().sliceTo(n), empty());
-            return new Pop(key, val, node.getKeys().count() < minLeafKeys);
+            return new Pop(key, val, node.getKeys().size() < minLeafKeys);
         }
-        final int i = node.getChildren().count() - 1;
+        final int i = node.getChildren().size() - 1;
         final N lastChild = node.getChildren().get(i);
         final Pop pop = pop(lastChild);
         if (pop.underflow) {

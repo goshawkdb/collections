@@ -19,7 +19,7 @@ public class BTree {
 
     private static ByteBuffer packKeys(ArrayLike<byte[]> keys) {
         final MsgPacker packer = new MsgPacker();
-        final int n = keys.count();
+        final int n = keys.size();
         packer.packArrayHeader(n);
         for (int i = 0; i < n; i++) {
             packer.writeBinary(keys.get(i));
@@ -51,8 +51,8 @@ public class BTree {
         return new NodeImpl(obj, ArrayLike.wrap(keys), values, children);
     }
 
-    public int count() {
-        return tree().count();
+    public int size() {
+        return tree().size();
     }
 
     private AbstractBTree<byte[], GoshawkObjRef, NodeImpl> tree() {

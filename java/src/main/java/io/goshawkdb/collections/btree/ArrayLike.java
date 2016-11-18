@@ -5,12 +5,12 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public interface ArrayLike<T> {
-    int count();
+    int size();
 
     T get(int i);
 
     default ArrayLike<T> copy() {
-        final int n = count();
+        final int n = size();
         final Object[] arr = new Object[n];
         copyTo(0, arr, 0, n);
         return new ArrayWrapper<>(arr);
@@ -19,14 +19,14 @@ public interface ArrayLike<T> {
     void copyTo(int srcPos, Object[] dst, int dstPos, int length);
 
     default T[] copyOut(Class<T> c) {
-        final int n = count();
+        final int n = size();
         @SuppressWarnings("unchecked") final T[] ts = (T[]) Array.newInstance(c, n);
         copyTo(0, ts, 0, n);
         return ts;
     }
 
     default <A> A fold(BiFunction<T, A, A> f, A a) {
-        final int n = count();
+        final int n = size();
         for (int i = 0; i < n; i++) {
             a = f.apply(get(i), a);
         }
@@ -34,7 +34,7 @@ public interface ArrayLike<T> {
     }
 
     default T last() {
-        return get(count() - 1);
+        return get(size() - 1);
     }
 
     default T first() {
@@ -48,7 +48,7 @@ public interface ArrayLike<T> {
     }
 
     default ArrayLike<T> sliceFrom(int i) {
-        return new Slice<>(this, i, count());
+        return new Slice<>(this, i, size());
     }
 
     default ArrayLike<T> sliceTo(int i) {
@@ -72,7 +72,7 @@ public interface ArrayLike<T> {
     }
 
     default ArrayLike<T> withoutLast() {
-        return sliceTo(count() - 1);
+        return sliceTo(size() - 1);
     }
 
     default ArrayLike<T> withoutFirst() {
@@ -98,11 +98,11 @@ public interface ArrayLike<T> {
         Mapped(ArrayLike<T> delegate, Function<T, U> f) {
             this.delegate = delegate;
             this.f = f;
-            this.count = delegate.count();
+            this.count = delegate.size();
         }
 
         @Override
-        public int count() {
+        public int size() {
             return count;
         }
 
@@ -132,7 +132,7 @@ public interface ArrayLike<T> {
                 throw new IllegalArgumentException();
             }
             this.delegate = delegate;
-            final int n = delegate.count();
+            final int n = delegate.size();
             if (to > n) {
                 to = n;
             }
@@ -141,7 +141,7 @@ public interface ArrayLike<T> {
         }
 
         @Override
-        public int count() {
+        public int size() {
             return to - from;
         }
 
@@ -170,7 +170,7 @@ public interface ArrayLike<T> {
         }
 
         @Override
-        public int count() {
+        public int size() {
             return ts.length;
         }
 
@@ -198,8 +198,8 @@ public interface ArrayLike<T> {
         }
 
         @Override
-        public int count() {
-            return delegate.count();
+        public int size() {
+            return delegate.size();
         }
 
         @Override
@@ -226,12 +226,12 @@ public interface ArrayLike<T> {
         Concat(ArrayLike<T> first, ArrayLike<T> second) {
             this.first = first;
             this.second = second;
-            this.firstCount = first.count();
-            this.secondCount = second.count();
+            this.firstCount = first.size();
+            this.secondCount = second.size();
         }
 
         @Override
-        public int count() {
+        public int size() {
             return firstCount + secondCount;
         }
 

@@ -22,8 +22,8 @@ public class MemBTree<K> {
         this.tree = new AbstractBTree<>(order, root, comparator);
     }
 
-    public int count() {
-        return tree.count();
+    public int size() {
+        return tree.size();
     }
 
     public void put(K key, Object value) {
@@ -46,7 +46,7 @@ public class MemBTree<K> {
 
     private void sketch(NodeImpl<K> node, StringBuilder b) {
         b.append('(');
-        final int n = node.getKeys().count();
+        final int n = node.getKeys().size();
         for (int i = 0; i < n; i++) {
             if (i > 0) {
                 b.append(' ');
@@ -159,7 +159,7 @@ public class MemBTree<K> {
         }
 
         void checkKeyOrder(Comparator<K> comparator, K lb, K ub) {
-            final int n = keys.count();
+            final int n = keys.size();
             for (int i = 0; i < n; i++) {
                 if ((lb != null && comparator.compare(keys.get(i), lb) < 0) ||
                         (ub != null && comparator.compare(keys.get(i), ub) >= 0)) {
@@ -182,7 +182,7 @@ public class MemBTree<K> {
             }
             final ArrayLike<NodeImpl<K>> children = getChildren();
             final int depth = children.get(0).checkLeafDepth();
-            final int n = children.count();
+            final int n = children.size();
             for (int i = 1; i < n; i++) {
                 if (children.get(i).checkLeafDepth() != depth) {
                     throw new IllegalStateException("not all leaves are at the same depth");

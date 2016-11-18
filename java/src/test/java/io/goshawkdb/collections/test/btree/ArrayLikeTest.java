@@ -40,11 +40,11 @@ public class ArrayLikeTest {
     @Test
     public void testSlice() {
         final ArrayLike<Integer> ints = wrap(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
-        assertThat(new ArrayLike.Slice<>(ints, 3, 2).count()).isEqualTo(0);
-        assertThat(new ArrayLike.Slice<>(ints, 3, 3).count()).isEqualTo(0);
-        assertThat(new ArrayLike.Slice<>(ints, 3, 4).count()).isEqualTo(1);
-        assertThat(new ArrayLike.Slice<>(ints, 3, 100).count()).isEqualTo(7);
-        assertThat(new ArrayLike.Slice<>(ints, 90, 100).count()).isEqualTo(0);
+        assertThat(new ArrayLike.Slice<>(ints, 3, 2).size()).isEqualTo(0);
+        assertThat(new ArrayLike.Slice<>(ints, 3, 3).size()).isEqualTo(0);
+        assertThat(new ArrayLike.Slice<>(ints, 3, 4).size()).isEqualTo(1);
+        assertThat(new ArrayLike.Slice<>(ints, 3, 100).size()).isEqualTo(7);
+        assertThat(new ArrayLike.Slice<>(ints, 90, 100).size()).isEqualTo(0);
         assertThatThrownBy(() -> new ArrayLike.Slice<>(ints, 3, 2).get(0)).isInstanceOf(IndexOutOfBoundsException.class);
         assertThat(new ArrayLike.Slice<>(ints, 3, 4).get(0)).isEqualTo(3);
         final Integer[] dst = new Integer[5];
