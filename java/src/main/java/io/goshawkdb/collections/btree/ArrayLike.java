@@ -4,7 +4,7 @@ import java.lang.reflect.Array;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-interface ArrayLike<T> {
+public interface ArrayLike<T> {
     int count();
 
     T get(int i);
@@ -127,7 +127,7 @@ interface ArrayLike<T> {
         final int from;
         final int to;
 
-        Slice(ArrayLike<T> delegate, int from, int to) {
+        public Slice(ArrayLike<T> delegate, int from, int to) {
             if (from < 0) {
                 throw new IllegalArgumentException();
             }

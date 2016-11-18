@@ -1,5 +1,6 @@
-package io.goshawkdb.collections.btree;
+package io.goshawkdb.collections.test.btree;
 
+import io.goshawkdb.collections.btree.ArrayLike;
 import org.junit.Test;
 
 import java.util.Arrays;
