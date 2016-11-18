@@ -1,21 +1,19 @@
 package io.goshawkdb.collections.linearhash;
 
-import org.msgpack.core.MessageBufferPacker;
-import org.msgpack.core.MessageFormat;
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessageUnpacker;
+import static io.goshawkdb.collections.linearhash.Root.BucketCapacity;
 
+import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionAbortedException;
+import io.goshawkdb.client.TransactionResult;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.function.BiConsumer;
-
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionAbortedException;
-import io.goshawkdb.client.TransactionResult;
-
-import static io.goshawkdb.collections.linearhash.Root.BucketCapacity;
+import org.msgpack.core.MessageBufferPacker;
+import org.msgpack.core.MessageFormat;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessageUnpacker;
 
 final class Bucket {
     private final LinearHash lh;
@@ -46,32 +44,38 @@ final class Bucket {
     }
 
     private void populate() {
-        TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
-            objRef = txn.getObject(objRef);
-            value = objRef.getValue();
-            refs.clear();
-            Collections.addAll(refs, objRef.getReferences());
-            try (final MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(value)) {
-                while (unpacker.hasNext()) {
-                    MessageFormat f = unpacker.getNextFormat();
-                    if (!(f == MessageFormat.FIXARRAY || f == MessageFormat.ARRAY16 || f == MessageFormat.ARRAY32)) {
-                        throw new IllegalArgumentException("value does not contain a LinearHash bucket");
-                    }
-                    entries = new byte[unpacker.unpackArrayHeader()][];
-                    for (int idx = 0; idx < entries.length; idx++) {
-                        final int keyLen = unpacker.unpackBinaryHeader();
-                        if (keyLen > 0) {
-                            final byte[] entry = new byte[keyLen];
-                            unpacker.readPayload(entry);
-                            entries[idx] = entry;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                throw new TransactionAbortedException(e);
-            }
-            return null;
-        });
+        TransactionResult<Object> result =
+                lh.conn.runTransaction(
+                        txn -> {
+                            objRef = txn.getObject(objRef);
+                            value = objRef.getValue();
+                            refs.clear();
+                            Collections.addAll(refs, objRef.getReferences());
+                            try (final MessageUnpacker unpacker =
+                                    MessagePack.newDefaultUnpacker(value)) {
+                                while (unpacker.hasNext()) {
+                                    MessageFormat f = unpacker.getNextFormat();
+                                    if (!(f == MessageFormat.FIXARRAY
+                                            || f == MessageFormat.ARRAY16
+                                            || f == MessageFormat.ARRAY32)) {
+                                        throw new IllegalArgumentException(
+                                                "value does not contain a LinearHash bucket");
+                                    }
+                                    entries = new byte[unpacker.unpackArrayHeader()][];
+                                    for (int idx = 0; idx < entries.length; idx++) {
+                                        final int keyLen = unpacker.unpackBinaryHeader();
+                                        if (keyLen > 0) {
+                                            final byte[] entry = new byte[keyLen];
+                                            unpacker.readPayload(entry);
+                                            entries[idx] = entry;
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                throw new TransactionAbortedException(e);
+                            }
+                            return null;
+                        });
         if (!result.isSuccessful()) {
             entries = null;
             value = null;
@@ -140,7 +144,8 @@ final class Bucket {
         }
     }
 
-    private ChainMutationResult putInSlot(final byte[] key, final GoshawkObjRef value, final int slot) {
+    private ChainMutationResult putInSlot(
+            final byte[] key, final GoshawkObjRef value, final int slot) {
         entries[slot] = key;
         final int refSlot = slot + 1;
         if (refSlot == refs.size()) {
@@ -169,7 +174,8 @@ final class Bucket {
     private ChainMutationResult putInNext(final byte[] key, final GoshawkObjRef value) {
         Bucket b = next();
         if (b == null) {
-            TransactionResult<GoshawkObjRef> result = lh.conn.runTransaction(txn -> txn.createObject(null));
+            TransactionResult<GoshawkObjRef> result =
+                    lh.conn.runTransaction(txn -> txn.createObject(null));
             if (!result.isSuccessful()) {
                 throw new TransactionAbortedException(result.cause);
             }

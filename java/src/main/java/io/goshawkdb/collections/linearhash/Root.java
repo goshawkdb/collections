@@ -1,21 +1,19 @@
 package io.goshawkdb.collections.linearhash;
 
+import io.goshawkdb.client.TransactionAbortedException;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.security.SecureRandom;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessageFormat;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.security.SecureRandom;
-
-import io.goshawkdb.client.TransactionAbortedException;
-
 final class Root {
-    final static int BucketCapacity = 64;
-    final static double UtilizationFactor = 0.75;
-    final static int SipHashKeyLength = 16;
+    static final int BucketCapacity = 64;
+    static final double UtilizationFactor = 0.75;
+    static final int SipHashKeyLength = 16;
 
     final int fieldCount = 6;
     int size;
@@ -40,12 +38,15 @@ final class Root {
         try (final MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data)) {
             while (unpacker.hasNext()) {
                 MessageFormat f = unpacker.getNextFormat();
-                if (!(f == MessageFormat.FIXMAP || f == MessageFormat.MAP16 || f == MessageFormat.MAP32)) {
+                if (!(f == MessageFormat.FIXMAP
+                        || f == MessageFormat.MAP16
+                        || f == MessageFormat.MAP32)) {
                     throw new IllegalArgumentException("data does not contain a LinearHash root");
                 }
                 int pairs = unpacker.unpackMapHeader();
                 if (pairs != fieldCount) {
-                    throw new IllegalArgumentException("Expected " + fieldCount + " pairs in root map. Found " + pairs);
+                    throw new IllegalArgumentException(
+                            "Expected " + fieldCount + " pairs in root map. Found " + pairs);
                 }
                 for (; pairs > 0; pairs--) {
                     final String key = unpacker.unpackString();
@@ -69,7 +70,8 @@ final class Root {
                             hashkey = unpacker.readPayload(unpacker.unpackBinaryHeader());
                             break;
                         default:
-                            throw new IllegalArgumentException("Unexpected key in LinearHash root: " + key);
+                            throw new IllegalArgumentException(
+                                    "Unexpected key in LinearHash root: " + key);
                     }
                 }
             }

@@ -2,11 +2,10 @@ package io.goshawkdb.collections.test.btree;
 
 import io.goshawkdb.collections.btree.Lexicographic;
 import io.goshawkdb.collections.btree.MemBTree;
-import org.junit.Test;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import org.junit.Test;
 
 // XXX: copy-pasta from SoakTestBase
 public class MemSoakTest {
@@ -45,42 +44,50 @@ public class MemSoakTest {
                 contents.put(key, value);
             } else {
                 switch (opClass) {
-                    case 0: { // find key
-                        final String key = String.valueOf(opArg);
-                        final String value = contents.get(key);
-                        final boolean inContents = !"".equals(value);
-                        final Object valueObj = collection.find(key.getBytes());
-                        if (inContents && (valueObj == null || !value.equals(new String((byte[]) valueObj)))) {
-                            throw new IllegalStateException(String.format("%s: Failed to retrieve string value: got %s, expected %s",
-                                    key, new String((byte[])valueObj), value));
-                        } else if (!inContents && valueObj != null) {
-                            throw new IllegalStateException(key + ": Got result even after remove: " + valueObj);
+                    case 0:
+                        { // find key
+                            final String key = String.valueOf(opArg);
+                            final String value = contents.get(key);
+                            final boolean inContents = !"".equals(value);
+                            final Object valueObj = collection.find(key.getBytes());
+                            if (inContents
+                                    && (valueObj == null
+                                            || !value.equals(new String((byte[]) valueObj)))) {
+                                throw new IllegalStateException(
+                                        String.format(
+                                                "%s: Failed to retrieve string value: got %s, expected %s",
+                                                key, new String((byte[]) valueObj), value));
+                            } else if (!inContents && valueObj != null) {
+                                throw new IllegalStateException(
+                                        key + ": Got result even after remove: " + valueObj);
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    case 1: { // remove key
-                        final String key = String.valueOf(opArg);
-                        final String value = contents.get(key);
-                        final boolean inContents = !"".equals(value);
-                        collection.remove(key.getBytes());
-                        if (inContents) {
-                            contents.put(key, "");
+                    case 1:
+                        { // remove key
+                            final String key = String.valueOf(opArg);
+                            final String value = contents.get(key);
+                            final boolean inContents = !"".equals(value);
+                            collection.remove(key.getBytes());
+                            if (inContents) {
+                                contents.put(key, "");
+                            }
+                            break;
                         }
-                        break;
-                    }
 
-                    case 2: { // re-put existing key
-                        final String key = String.valueOf(opArg);
-                        String value = contents.get(key);
-                        final boolean inContents = !"".equals(value);
-                        if (!inContents) {
-                            value = "Hello" + i + "-" + key;
-                            contents.put(key, value);
+                    case 2:
+                        { // re-put existing key
+                            final String key = String.valueOf(opArg);
+                            String value = contents.get(key);
+                            final boolean inContents = !"".equals(value);
+                            if (!inContents) {
+                                value = "Hello" + i + "-" + key;
+                                contents.put(key, value);
+                            }
+                            collection.put(key.getBytes(), value.getBytes());
+                            break;
                         }
-                        collection.put(key.getBytes(), value.getBytes());
-                        break;
-                    }
 
                     default:
                         throw new IllegalArgumentException("Impossible opClass: " + opClass);

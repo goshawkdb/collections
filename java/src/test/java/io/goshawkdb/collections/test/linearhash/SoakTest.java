@@ -4,7 +4,6 @@ import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.collections.test.SoakTestBase;
-
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.KeyStoreException;
@@ -14,8 +13,9 @@ import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 
 public class SoakTest extends SoakTestBase<LinearHash> {
-    public SoakTest() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
-    }
+    public SoakTest()
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected LinearHash create(Connection c) throws Exception {

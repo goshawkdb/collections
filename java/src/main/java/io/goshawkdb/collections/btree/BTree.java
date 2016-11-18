@@ -1,14 +1,13 @@
 package io.goshawkdb.collections.btree;
 
+import static io.goshawkdb.collections.btree.ArrayLike.empty;
+
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.client.Transaction;
 import io.goshawkdb.client.TransactionResult;
-
 import java.nio.ByteBuffer;
 import java.util.function.BiConsumer;
-
-import static io.goshawkdb.collections.btree.ArrayLike.empty;
 
 public class BTree {
     private final Connection conn;
@@ -30,7 +29,8 @@ public class BTree {
     }
 
     public static BTree createEmpty(final Connection conn) throws Exception {
-        final TransactionResult<GoshawkObjRef> r = conn.runTransaction(txn -> txn.createObject(packKeys(empty())));
+        final TransactionResult<GoshawkObjRef> r =
+                conn.runTransaction(txn -> txn.createObject(packKeys(empty())));
         if (!r.isSuccessful()) {
             throw r.cause;
         }
@@ -52,7 +52,8 @@ public class BTree {
             throw new IllegalStateException("trailing garbage in leaf");
         }
         final ArrayLike<GoshawkObjRef> refs = ArrayLike.wrap(obj.getReferences());
-        final ArrayLike<NodeImpl> children = refs.sliceFrom(keyCount).map((obj1) -> toNode(txn, obj1));
+        final ArrayLike<NodeImpl> children =
+                refs.sliceFrom(keyCount).map((obj1) -> toNode(txn, obj1));
         final ArrayLike<GoshawkObjRef> values = refs.sliceTo(keyCount);
         return new NodeImpl(txn, obj, ArrayLike.wrap(keys), values, children);
     }
@@ -70,10 +71,12 @@ public class BTree {
     }
 
     public void put(byte[] key, GoshawkObjRef value) throws Exception {
-        final TransactionResult<Void> r = conn.runTransaction(txn -> {
-            tree(txn).put(key, value);
-            return null;
-        });
+        final TransactionResult<Void> r =
+                conn.runTransaction(
+                        txn -> {
+                            tree(txn).put(key, value);
+                            return null;
+                        });
         if (!r.isSuccessful()) {
             throw r.cause;
         }
@@ -88,20 +91,24 @@ public class BTree {
     }
 
     public void forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) throws Exception {
-        final TransactionResult<Void> r = conn.runTransaction(txn -> {
-            tree(txn).forEach(action);
-            return null;
-        });
+        final TransactionResult<Void> r =
+                conn.runTransaction(
+                        txn -> {
+                            tree(txn).forEach(action);
+                            return null;
+                        });
         if (!r.isSuccessful()) {
             throw r.cause;
         }
     }
 
     public void remove(byte[] key) throws Exception {
-        final TransactionResult<Void> r = conn.runTransaction(txn -> {
-            tree(txn).remove(key);
-            return null;
-        });
+        final TransactionResult<Void> r =
+                conn.runTransaction(
+                        txn -> {
+                            tree(txn).remove(key);
+                            return null;
+                        });
         if (!r.isSuccessful()) {
             throw r.cause;
         }
@@ -114,7 +121,12 @@ public class BTree {
         ArrayLike<GoshawkObjRef> values;
         ArrayLike<NodeImpl> children;
 
-        NodeImpl(Transaction txn, GoshawkObjRef obj, ArrayLike<byte[]> keys, ArrayLike<GoshawkObjRef> values, ArrayLike<NodeImpl> children) {
+        NodeImpl(
+                Transaction txn,
+                GoshawkObjRef obj,
+                ArrayLike<byte[]> keys,
+                ArrayLike<GoshawkObjRef> values,
+                ArrayLike<NodeImpl> children) {
             this.txn = txn;
             this.obj = obj;
             this.keys = keys;
@@ -138,7 +150,10 @@ public class BTree {
         }
 
         @Override
-        public void update(ArrayLike<byte[]> newKeys, ArrayLike<GoshawkObjRef> newVals, ArrayLike<NodeImpl> newChildren) {
+        public void update(
+                ArrayLike<byte[]> newKeys,
+                ArrayLike<GoshawkObjRef> newVals,
+                ArrayLike<NodeImpl> newChildren) {
             final ArrayLike<GoshawkObjRef> refs = newVals.concat(newChildren.map(NodeImpl::getObj));
             obj.set(packKeys(newKeys), refs.copyOut(GoshawkObjRef.class));
             keys = newKeys;
@@ -151,9 +166,13 @@ public class BTree {
         }
 
         @Override
-        public NodeImpl createSibling(ArrayLike<byte[]> keys, ArrayLike<GoshawkObjRef> vals, ArrayLike<NodeImpl> children) {
+        public NodeImpl createSibling(
+                ArrayLike<byte[]> keys,
+                ArrayLike<GoshawkObjRef> vals,
+                ArrayLike<NodeImpl> children) {
             final ArrayLike<GoshawkObjRef> refs = vals.concat(children.map(NodeImpl::getObj));
-            final GoshawkObjRef obj = txn.createObject(packKeys(keys), refs.copyOut(GoshawkObjRef.class));
+            final GoshawkObjRef obj =
+                    txn.createObject(packKeys(keys), refs.copyOut(GoshawkObjRef.class));
             return new NodeImpl(txn, obj, keys, vals, children);
         }
     }

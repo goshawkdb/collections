@@ -1,10 +1,9 @@
 package io.goshawkdb.collections.btree;
 
-import org.msgpack.core.MessagePack;
-import org.msgpack.core.MessageUnpacker;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.msgpack.core.MessagePack;
+import org.msgpack.core.MessageUnpacker;
 
 // convenience wrapper for MessageUnpacker without all the checked exceptions
 class MsgUnpacker {

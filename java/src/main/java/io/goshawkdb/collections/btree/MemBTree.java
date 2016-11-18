@@ -1,11 +1,11 @@
 package io.goshawkdb.collections.btree;
 
-import java.util.Comparator;
-import java.util.function.BiConsumer;
-
 import static io.goshawkdb.collections.btree.AbstractBTree.ceilHalf;
 import static io.goshawkdb.collections.btree.ArrayLike.empty;
 import static io.goshawkdb.collections.btree.ArrayLike.wrap;
+
+import java.util.Comparator;
+import java.util.function.BiConsumer;
 
 public class MemBTree<K> {
     private final int order;
@@ -72,7 +72,8 @@ public class MemBTree<K> {
         tree.remove(key);
     }
 
-    public static void allTrees(int order, int height, int firstKey, BiConsumer<MemBTree<Integer>, Integer> f) {
+    public static void allTrees(
+            int order, int height, int firstKey, BiConsumer<MemBTree<Integer>, Integer> f) {
         if (height < 1) {
             throw new IllegalArgumentException();
         }
@@ -82,29 +83,54 @@ public class MemBTree<K> {
                 for (int i = 0; i < keys.length; i++) {
                     keys[i] = firstKey + i;
                 }
-                f.accept(new MemBTree<>(order, Comparator.naturalOrder(), new NodeImpl<>(wrap(keys), wrap(keys), empty())), firstKey + n);
+                f.accept(
+                        new MemBTree<>(
+                                order,
+                                Comparator.naturalOrder(),
+                                new NodeImpl<>(wrap(keys), wrap(keys), empty())),
+                        firstKey + n);
             }
             return;
         }
-        allTrees1(order, height - 1, firstKey, order, (ts, is) -> {
-            final NodeImpl<Integer> node = new NodeImpl<>(is.withoutLast(), is.withoutLast().map(i -> (Object) i), ts);
-            f.accept(new MemBTree<>(order, Comparator.naturalOrder(), node), is.last());
-        });
+        allTrees1(
+                order,
+                height - 1,
+                firstKey,
+                order,
+                (ts, is) -> {
+                    final NodeImpl<Integer> node =
+                            new NodeImpl<>(
+                                    is.withoutLast(), is.withoutLast().map(i -> (Object) i), ts);
+                    f.accept(new MemBTree<>(order, Comparator.naturalOrder(), node), is.last());
+                });
     }
 
-    private static void allTrees1(int order, int height, int firstKey, int n, BiConsumer<ArrayLike<NodeImpl<Integer>>, ArrayLike<Integer>> f) {
+    private static void allTrees1(
+            int order,
+            int height,
+            int firstKey,
+            int n,
+            BiConsumer<ArrayLike<NodeImpl<Integer>>, ArrayLike<Integer>> f) {
         if (n < 1) {
             throw new IllegalArgumentException();
         }
-        allTrees(order, height, firstKey, (t, i) -> {
-            final NodeImpl<Integer> node = t.getRoot();
-            if (n == 1) {
-                f.accept(wrap(node), wrap(i));
-                return;
-            }
-            allTrees1(order, height, i + 1, n - 1,
-                    (nodes, is) -> f.accept(wrap(node).concat(nodes), wrap(i).concat(is)));
-        });
+        allTrees(
+                order,
+                height,
+                firstKey,
+                (t, i) -> {
+                    final NodeImpl<Integer> node = t.getRoot();
+                    if (n == 1) {
+                        f.accept(wrap(node), wrap(i));
+                        return;
+                    }
+                    allTrees1(
+                            order,
+                            height,
+                            i + 1,
+                            n - 1,
+                            (nodes, is) -> f.accept(wrap(node).concat(nodes), wrap(i).concat(is)));
+                });
     }
 
     private NodeImpl<K> getRoot() {
@@ -142,14 +168,18 @@ public class MemBTree<K> {
         }
 
         @Override
-        public void update(ArrayLike<K> newKeys, ArrayLike<Object> newVals, ArrayLike<NodeImpl<K>> newChildren) {
+        public void update(
+                ArrayLike<K> newKeys,
+                ArrayLike<Object> newVals,
+                ArrayLike<NodeImpl<K>> newChildren) {
             keys = newKeys.copy();
             values = newVals.copy();
             children = newChildren.copy();
         }
 
         @Override
-        public NodeImpl<K> createSibling(ArrayLike<K> keys, ArrayLike<Object> vals, ArrayLike<NodeImpl<K>> children) {
+        public NodeImpl<K> createSibling(
+                ArrayLike<K> keys, ArrayLike<Object> vals, ArrayLike<NodeImpl<K>> children) {
             return new NodeImpl<>(keys, vals, children);
         }
 
@@ -161,17 +191,18 @@ public class MemBTree<K> {
         void checkKeyOrder(Comparator<K> comparator, K lb, K ub) {
             final int n = keys.size();
             for (int i = 0; i < n; i++) {
-                if ((lb != null && comparator.compare(keys.get(i), lb) < 0) ||
-                        (ub != null && comparator.compare(keys.get(i), ub) >= 0)) {
+                if ((lb != null && comparator.compare(keys.get(i), lb) < 0)
+                        || (ub != null && comparator.compare(keys.get(i), ub) >= 0)) {
                     throw new IllegalStateException("wrong order");
                 }
             }
             if (!isLeaf()) {
                 for (int i = 0; i <= n; i++) {
-                    children.get(i).checkKeyOrder(
-                            comparator,
-                            i > 0 ? keys.get(i - 1) : null,
-                            i < n ? keys.get(i) : null);
+                    children.get(i)
+                            .checkKeyOrder(
+                                    comparator,
+                                    i > 0 ? keys.get(i - 1) : null,
+                                    i < n ? keys.get(i) : null);
                 }
             }
         }

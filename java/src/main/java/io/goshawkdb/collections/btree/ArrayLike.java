@@ -20,7 +20,8 @@ public interface ArrayLike<T> {
 
     default T[] copyOut(Class<T> c) {
         final int n = size();
-        @SuppressWarnings("unchecked") final T[] ts = (T[]) Array.newInstance(c, n);
+        @SuppressWarnings("unchecked")
+        final T[] ts = (T[]) Array.newInstance(c, n);
         copyTo(0, ts, 0, n);
         return ts;
     }
@@ -81,7 +82,7 @@ public interface ArrayLike<T> {
 
     // constructors
 
-    @SafeVarargs  // ts may have run-time type Object[]
+    @SafeVarargs // ts may have run-time type Object[]
     static <T> ArrayLike<T> wrap(T... ts) {
         return new ArrayWrapper<>(ts);
     }
@@ -163,7 +164,7 @@ public interface ArrayLike<T> {
     }
 
     class ArrayWrapper<T> implements ArrayLike<T> {
-        final Object[] ts;  // see wrap for why this is Object[] not T[]
+        final Object[] ts; // see wrap for why this is Object[] not T[]
 
         ArrayWrapper(Object[] ts) {
             this.ts = ts;
@@ -177,7 +178,7 @@ public interface ArrayLike<T> {
         @SuppressWarnings("unchecked")
         @Override
         public T get(int i) {
-            return (T)ts[i];
+            return (T) ts[i];
         }
 
         @Override

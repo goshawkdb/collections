@@ -1,7 +1,10 @@
 package io.goshawkdb.collections.test;
 
-import org.junit.Test;
-
+import io.goshawkdb.client.Connection;
+import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionAbortedException;
+import io.goshawkdb.client.TransactionResult;
+import io.goshawkdb.test.TestBase;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.security.InvalidKeyException;
@@ -13,15 +16,12 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
-
-import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionAbortedException;
-import io.goshawkdb.client.TransactionResult;
-import io.goshawkdb.test.TestBase;
+import org.junit.Test;
 
 public abstract class SoakTestBase<T> extends TestBase {
-    protected SoakTestBase() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
+    protected SoakTestBase()
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
         super();
     }
 
@@ -40,7 +40,7 @@ public abstract class SoakTestBase<T> extends TestBase {
             T collection = create(c);
 
             final long seed = System.nanoTime();
-            System.out.println("Seed: "+ seed);
+            System.out.println("Seed: " + seed);
             final Random rng = new Random(seed);
             // we use contents to mirror the state of the LHash
             final Map<String, String> contents = new HashMap<>();
@@ -64,15 +64,18 @@ public abstract class SoakTestBase<T> extends TestBase {
                     final String key = String.valueOf(contentsSize);
                     final String value = "Hello" + i + "-" + key;
                     final T finalCollection = collection;
-                    TransactionResult<Object> result = c.runTransaction(txn -> {
-                        GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
-                        try {
-                            put(finalCollection, key.getBytes(), valueObj);
-                        } catch (Exception e) {
-                            throw new TransactionAbortedException(e);
-                        }
-                        return null;
-                    });
+                    TransactionResult<Object> result =
+                            c.runTransaction(
+                                    txn -> {
+                                        GoshawkObjRef valueObj =
+                                                txn.createObject(ByteBuffer.wrap(value.getBytes()));
+                                        try {
+                                            put(finalCollection, key.getBytes(), valueObj);
+                                        } catch (Exception e) {
+                                            throw new TransactionAbortedException(e);
+                                        }
+                                        return null;
+                                    });
                     if (!result.isSuccessful()) {
                         throw result.cause;
                     }
@@ -80,70 +83,96 @@ public abstract class SoakTestBase<T> extends TestBase {
 
                 } else {
                     switch (opClass) {
-                        case 0: { // find key
-                            final String key = String.valueOf(opArg);
-                            final String value = contents.get(key);
-                            final boolean inContents = !"".equals(value);
-                            final T finalCollection = collection;
-                            final TransactionResult<String> result = c.runTransaction(txn -> {
-                                try {
-                                    final GoshawkObjRef valueObj = find(finalCollection, key.getBytes());
-                                    if (valueObj == null) {
-                                        return null;
-                                    } else {
-                                        final ByteBuffer bb = valueObj.getValue();
-                                        return byteBufferToString(bb, bb.limit());
-                                    }
-                                } catch (Exception e) {
-                                    throw new TransactionAbortedException(e);
+                        case 0:
+                            { // find key
+                                final String key = String.valueOf(opArg);
+                                final String value = contents.get(key);
+                                final boolean inContents = !"".equals(value);
+                                final T finalCollection = collection;
+                                final TransactionResult<String> result =
+                                        c.runTransaction(
+                                                txn -> {
+                                                    try {
+                                                        final GoshawkObjRef valueObj =
+                                                                find(
+                                                                        finalCollection,
+                                                                        key.getBytes());
+                                                        if (valueObj == null) {
+                                                            return null;
+                                                        } else {
+                                                            final ByteBuffer bb =
+                                                                    valueObj.getValue();
+                                                            return byteBufferToString(
+                                                                    bb, bb.limit());
+                                                        }
+                                                    } catch (Exception e) {
+                                                        throw new TransactionAbortedException(e);
+                                                    }
+                                                });
+                                if (!result.isSuccessful()) {
+                                    throw result.cause;
                                 }
-                            });
-                            if (!result.isSuccessful()) {
-                                throw result.cause;
-                            }
-                            if (inContents && (result.result == null || !result.result.equals(value))) {
-                                throw new IllegalStateException(key + ": Failed to retrieve string value: " + result.result);
-                            } else if (!inContents && result.result != null) {
-                                throw new IllegalStateException(key + ": Got result even after remove: " + result.result);
-                            }
-                            break;
-                        }
-
-                        case 1: { // remove key
-                            final String key = String.valueOf(opArg);
-                            final String value = contents.get(key);
-                            final boolean inContents = !"".equals(value);
-                            remove(collection, key.getBytes());
-                            if (inContents) {
-                                contents.put(key, "");
-                            }
-                            break;
-                        }
-
-                        case 2: { // re-put existing key
-                            final String key = String.valueOf(opArg);
-                            String value = contents.get(key);
-                            final boolean inContents = !"".equals(value);
-                            if (!inContents) {
-                                value = "Hello" + i + "-" + key;
-                                contents.put(key, value);
-                            }
-                            final String finalValue = value;
-                            final T finalCollection = collection;
-                            final TransactionResult<Object> result = c.runTransaction(txn -> {
-                                GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
-                                try {
-                                    put(finalCollection, key.getBytes(), valueObj);
-                                } catch (Exception e) {
-                                    throw new TransactionAbortedException(e);
+                                if (inContents
+                                        && (result.result == null
+                                                || !result.result.equals(value))) {
+                                    throw new IllegalStateException(
+                                            key
+                                                    + ": Failed to retrieve string value: "
+                                                    + result.result);
+                                } else if (!inContents && result.result != null) {
+                                    throw new IllegalStateException(
+                                            key
+                                                    + ": Got result even after remove: "
+                                                    + result.result);
                                 }
-                                return null;
-                            });
-                            if (!result.isSuccessful()) {
-                                throw result.cause;
+                                break;
                             }
-                            break;
-                        }
+
+                        case 1:
+                            { // remove key
+                                final String key = String.valueOf(opArg);
+                                final String value = contents.get(key);
+                                final boolean inContents = !"".equals(value);
+                                remove(collection, key.getBytes());
+                                if (inContents) {
+                                    contents.put(key, "");
+                                }
+                                break;
+                            }
+
+                        case 2:
+                            { // re-put existing key
+                                final String key = String.valueOf(opArg);
+                                String value = contents.get(key);
+                                final boolean inContents = !"".equals(value);
+                                if (!inContents) {
+                                    value = "Hello" + i + "-" + key;
+                                    contents.put(key, value);
+                                }
+                                final String finalValue = value;
+                                final T finalCollection = collection;
+                                final TransactionResult<Object> result =
+                                        c.runTransaction(
+                                                txn -> {
+                                                    GoshawkObjRef valueObj =
+                                                            txn.createObject(
+                                                                    ByteBuffer.wrap(
+                                                                            finalValue.getBytes()));
+                                                    try {
+                                                        put(
+                                                                finalCollection,
+                                                                key.getBytes(),
+                                                                valueObj);
+                                                    } catch (Exception e) {
+                                                        throw new TransactionAbortedException(e);
+                                                    }
+                                                    return null;
+                                                });
+                                if (!result.isSuccessful()) {
+                                    throw result.cause;
+                                }
+                                break;
+                            }
 
                         default:
                             throw new IllegalArgumentException("Impossible opClass: " + opClass);

@@ -1,10 +1,12 @@
 package io.goshawkdb.collections.test.btree;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.Assert.assertThat;
+
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.collections.btree.BTree;
 import io.goshawkdb.collections.test.CreateTestBase;
-
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.KeyStoreException;
@@ -14,12 +16,10 @@ import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.function.BiConsumer;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
-
 public class CreateTest extends CreateTestBase<BTree> {
-    public CreateTest() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
-    }
+    public CreateTest()
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
+                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected BTree create(Connection c) throws Exception {
