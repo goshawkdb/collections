@@ -2,7 +2,6 @@ package io.goshawkdb.collections.test.btree;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.Transaction;
 import io.goshawkdb.collections.btree.BTree;
 import io.goshawkdb.collections.test.CreateTestBase;
 
@@ -18,55 +17,32 @@ import java.util.function.BiConsumer;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
 
-public class CreateTest extends CreateTestBase<CreateTest.ConnAndRef> {
+public class CreateTest extends CreateTestBase<BTree> {
     public CreateTest() throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
     }
 
-    static class ConnAndRef {
-        private final Connection conn;
-        private final GoshawkObjRef ref;
-
-        ConnAndRef(Connection conn, GoshawkObjRef ref) {
-            this.conn = conn;
-            this.ref = ref;
-        }
-
-        BTree getTree(Transaction txn) {
-            return new BTree(txn, txn.getObject(ref));
-        }
+    @Override
+    protected BTree create(Connection c) throws Exception {
+        return BTree.createEmpty(c);
     }
 
     @Override
-    protected ConnAndRef create(Connection c) throws Exception {
-        return runTransaction(c, txn -> new ConnAndRef(c, BTree.createEmpty(txn).getRoot()));
+    protected void assertSize(BTree t, int expected) throws Exception {
+        assertThat(t.size(), equalTo(expected));
     }
 
     @Override
-    protected void assertSize(ConnAndRef cr, int expected) throws Exception {
-        runTransaction(cr.conn, txn -> {
-            assertThat(cr.getTree(txn).size(), equalTo(expected));
-            return null;
-        });
+    protected void put(BTree t, byte[] bytes, GoshawkObjRef value) throws Exception {
+        t.put(bytes, value);
     }
 
     @Override
-    protected void put(ConnAndRef cr, byte[] bytes, GoshawkObjRef value) throws Exception {
-        runTransaction(cr.conn, txn -> {
-            cr.getTree(txn).put(bytes, value);
-            return null;
-        });
+    protected GoshawkObjRef find(BTree t, byte[] key) throws Exception {
+        return t.find(key);
     }
 
     @Override
-    protected GoshawkObjRef find(ConnAndRef cr, byte[] bytes) throws Exception {
-        return runTransaction(cr.conn, txn -> cr.getTree(txn).find(bytes));
-    }
-
-    @Override
-    protected void forEach(ConnAndRef cr, BiConsumer<byte[], GoshawkObjRef> action) throws Exception {
-        runTransaction(cr.conn, txn -> {
-            cr.getTree(txn).forEach(action);
-            return null;
-        });
+    protected void forEach(BTree t, BiConsumer<byte[], GoshawkObjRef> action) throws Exception {
+        t.forEach(action);
     }
 }
