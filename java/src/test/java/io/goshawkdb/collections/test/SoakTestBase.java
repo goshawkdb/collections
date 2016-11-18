@@ -40,6 +40,7 @@ public abstract class SoakTestBase<T> extends TestBase {
             T collection = create(c);
 
             final long seed = System.nanoTime();
+            System.out.println("Seed: "+ seed);
             final Random rng = new Random(seed);
             // we use contents to mirror the state of the LHash
             final Map<String, String> contents = new HashMap<>();
