@@ -16,8 +16,6 @@ import java.util.Random;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionAbortedException;
-import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.test.TestBase;
 
@@ -31,10 +29,10 @@ public class SoakTest extends TestBase {
     public void soak() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            LinearHash lh = LinearHash.createEmpty(c);
+            LinearHash lh = LinearHash.createEmpty(c).getResultOrRethrow();
 
             final long seed = System.nanoTime();
-            System.out.println("Seed: "+ seed);
+            System.out.println("Seed: " + seed);
             final Random rng = new Random(seed);
             // we use contents to mirror the state of the LHash
             final Map<String, String> contents = new HashMap<String, String>();
@@ -51,25 +49,18 @@ public class SoakTest extends TestBase {
                 }
 
                 if (op == -1) { // reset
-                    lh = LinearHash.createEmpty(c);
+                    lh = LinearHash.createEmpty(c).getResultOrRethrow();
                     contents.clear();
 
                 } else if (op < -1) { // add new key
                     final String key = String.valueOf(contentsSize);
                     final String value = "Hello" + i + "-" + key;
                     final LinearHash finalLh = lh;
-                    TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+                    lh.conn.runTransaction(txn -> {
                         GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
-                        try {
-                            finalLh.put(key.getBytes(), valueObj);
-                        } catch (Exception e) {
-                            throw new TransactionAbortedException(e);
-                        }
+                        finalLh.put(key.getBytes(), valueObj).getResultOrAbort();
                         return null;
-                    });
-                    if (!result.isSuccessful()) {
-                        throw result.cause;
-                    }
+                    }).getResultOrRethrow();
                     contents.put(key, value);
 
                 } else {
@@ -79,26 +70,19 @@ public class SoakTest extends TestBase {
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
                             final LinearHash finalLh = lh;
-                            final TransactionResult<String> result = lh.conn.runTransaction(txn -> {
-                                try {
-                                    final GoshawkObjRef valueObj = finalLh.find(key.getBytes());
-                                    if (valueObj == null) {
-                                        return null;
-                                    } else {
-                                        final ByteBuffer bb = valueObj.getValue();
-                                        return byteBufferToString(bb, bb.limit());
-                                    }
-                                } catch (Exception e) {
-                                    throw new TransactionAbortedException(e);
+                            final String result = lh.conn.runTransaction(txn -> {
+                                final GoshawkObjRef valueObj = finalLh.find(key.getBytes()).getResultOrAbort();
+                                if (valueObj == null) {
+                                    return null;
+                                } else {
+                                    final ByteBuffer bb = valueObj.getValue();
+                                    return byteBufferToString(bb, bb.limit());
                                 }
-                            });
-                            if (!result.isSuccessful()) {
-                                throw result.cause;
-                            }
-                            if (inContents && (result.result == null || !result.result.equals(value))) {
-                                throw new IllegalStateException(key + ": Failed to retrieve string value: " + result.result);
-                            } else if (!inContents && result.result != null) {
-                                throw new IllegalStateException(key + ": Got result even after remove: " + result.result);
+                            }).getResultOrRethrow();
+                            if (inContents && (result == null || !result.equals(value))) {
+                                throw new IllegalStateException(key + ": Failed to retrieve string value: " + result);
+                            } else if (!inContents && result != null) {
+                                throw new IllegalStateException(key + ": Got result even after remove: " + result);
                             }
                             break;
                         }
@@ -124,18 +108,11 @@ public class SoakTest extends TestBase {
                             }
                             final String finalValue = value;
                             final LinearHash finalLh = lh;
-                            final TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+                            lh.conn.runTransaction(txn -> {
                                 GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
-                                try {
-                                    finalLh.put(key.getBytes(), valueObj);
-                                } catch (Exception e) {
-                                    throw new TransactionAbortedException(e);
-                                }
+                                finalLh.put(key.getBytes(), valueObj).getResultOrAbort();
                                 return null;
-                            });
-                            if (!result.isSuccessful()) {
-                                throw result.cause;
-                            }
+                            }).getResultOrRethrow();
                             break;
                         }
 
