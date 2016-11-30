@@ -60,7 +60,7 @@ public class BTree {
         return new AbstractBTree<>(128, toNode(txn, txn.getObject(root)), Lexicographic.INSTANCE);
     }
 
-    public TransactionResult<Object> put(byte[] key, GoshawkObjRef value) {
+    public TransactionResult<Void> put(byte[] key, GoshawkObjRef value) {
         return conn.runTransaction(
                 txn -> {
                     tree(txn).put(key, value);
@@ -80,7 +80,7 @@ public class BTree {
         return r.result;
     }
 
-    public TransactionResult<Object> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
+    public TransactionResult<Void> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
         return conn.runTransaction(
                 txn -> {
                     tree(txn).forEach(action);
@@ -88,7 +88,7 @@ public class BTree {
                 });
     }
 
-    public TransactionResult<Object> remove(byte[] key) {
+    public TransactionResult<Void> remove(byte[] key) {
         return conn.runTransaction(
                 txn -> {
                     tree(txn).remove(key);

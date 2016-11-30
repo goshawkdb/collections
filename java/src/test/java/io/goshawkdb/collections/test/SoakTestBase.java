@@ -27,11 +27,11 @@ public abstract class SoakTestBase<T> extends TestBase {
 
     protected abstract TransactionResult<T> create(final Connection c);
 
-    protected abstract TransactionResult<Object> put(T collection, byte[] bytes, GoshawkObjRef value);
+    protected abstract TransactionResult<Void> put(T collection, byte[] bytes, GoshawkObjRef value);
 
     protected abstract TransactionResult<GoshawkObjRef> find(T collection, byte[] bytes);
 
-    protected abstract TransactionResult<Object> remove(T collection, byte[] bytes);
+    protected abstract TransactionResult<Void> remove(T collection, byte[] bytes);
 
     @Test
     public void soak() throws Exception {

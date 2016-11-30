@@ -24,7 +24,7 @@ public class SoakTest extends SoakTestBase<BTree> {
     }
 
     @Override
-    protected TransactionResult<Object> put(BTree t, byte[] key, GoshawkObjRef value) {
+    protected TransactionResult<Void> put(BTree t, byte[] key, GoshawkObjRef value) {
         return t.put(key, value);
     }
 
@@ -34,7 +34,7 @@ public class SoakTest extends SoakTestBase<BTree> {
     }
 
     @Override
-    protected TransactionResult<Object> remove(BTree t, byte[] key) {
+    protected TransactionResult<Void> remove(BTree t, byte[] key) {
         return t.remove(key);
     }
 }

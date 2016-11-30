@@ -30,7 +30,7 @@ public class CreateTest extends CreateTestBase<LinearHash> {
     }
 
     @Override
-    protected TransactionResult<Object> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
+    protected TransactionResult<Void> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
         return lh.put(bytes, value);
     }
 
@@ -40,7 +40,7 @@ public class CreateTest extends CreateTestBase<LinearHash> {
     }
 
     @Override
-    protected TransactionResult<Object> forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action) {
+    protected TransactionResult<Void> forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action) {
         return lh.forEach(action);
     }
 }

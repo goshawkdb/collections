@@ -34,11 +34,11 @@ public abstract class CreateTestBase<T> extends TestBase {
 
     protected abstract TransactionResult<Integer> size(T collection);
 
-    protected abstract TransactionResult<Object> put(T collection, byte[] bytes, GoshawkObjRef value);
+    protected abstract TransactionResult<Void> put(T collection, byte[] bytes, GoshawkObjRef value);
 
     protected abstract TransactionResult<GoshawkObjRef> find(T collection, byte[] bytes);
 
-    protected abstract TransactionResult<Object> forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action);
+    protected abstract TransactionResult<Void> forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action);
 
     @Test
     public void createNewTest() throws Exception {

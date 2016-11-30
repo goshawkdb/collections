@@ -130,7 +130,7 @@ public class LinearHash {
      * @param value The value to associate with the key.
      * @return A transaction result with no value that captures any errors that occurred
      */
-    public TransactionResult<Object> put(final byte[] key, final GoshawkObjRef value) {
+    public TransactionResult<Void> put(final byte[] key, final GoshawkObjRef value) {
         return conn.runTransaction(
                 txn -> {
                     populate();
@@ -157,7 +157,7 @@ public class LinearHash {
      * @param key The to search for and remove.
      * @return A transaction result with no value that captures any errors that occurred
      */
-    public TransactionResult<Object> remove(final byte[] key) {
+    public TransactionResult<Void> remove(final byte[] key) {
         return conn.runTransaction(
                 txn -> {
                     populate();
@@ -189,7 +189,7 @@ public class LinearHash {
      * @param action The action to be performed for each entry
      * @return A transaction result with no value that captures any errors that occurred
      */
-    public TransactionResult<Object> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
+    public TransactionResult<Void> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
         return conn.runTransaction(
                 txn -> {
                     populate();

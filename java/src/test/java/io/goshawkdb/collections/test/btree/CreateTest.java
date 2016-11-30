@@ -36,7 +36,7 @@ public class CreateTest extends CreateTestBase<BTree> {
     }
 
     @Override
-    protected TransactionResult<Object> put(BTree t, byte[] bytes, GoshawkObjRef value) {
+    protected TransactionResult<Void> put(BTree t, byte[] bytes, GoshawkObjRef value) {
         return t.put(bytes, value);
     }
 
@@ -46,7 +46,7 @@ public class CreateTest extends CreateTestBase<BTree> {
     }
 
     @Override
-    protected TransactionResult<Object> forEach(BTree t, BiConsumer<byte[], GoshawkObjRef> action) {
+    protected TransactionResult<Void> forEach(BTree t, BiConsumer<byte[], GoshawkObjRef> action) {
         return t.forEach(action);
     }
 

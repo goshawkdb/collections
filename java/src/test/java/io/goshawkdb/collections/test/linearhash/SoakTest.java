@@ -24,7 +24,7 @@ public class SoakTest extends SoakTestBase<LinearHash> {
     }
 
     @Override
-    protected TransactionResult<Object> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
+    protected TransactionResult<Void> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
         return lh.put(bytes, value);
     }
 
@@ -34,7 +34,7 @@ public class SoakTest extends SoakTestBase<LinearHash> {
     }
 
     @Override
-    protected TransactionResult<Object> remove(LinearHash lh, byte[] bytes) {
+    protected TransactionResult<Void> remove(LinearHash lh, byte[] bytes) {
         return lh.remove(bytes);
     }
 }
