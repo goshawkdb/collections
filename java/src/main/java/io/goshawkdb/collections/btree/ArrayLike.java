@@ -87,6 +87,10 @@ public interface ArrayLike<T> {
         return new ArrayWrapper<>(ts);
     }
 
+    static <T> ArrayLike<T> wrapArray(T[] ts) {
+        return new ArrayWrapper<>(ts);
+    }
+
     static <T> ArrayLike<T> empty() {
         return wrap();
     }

@@ -3,6 +3,7 @@ package io.goshawkdb.collections.btree;
 import static io.goshawkdb.collections.btree.AbstractBTree.ceilHalf;
 import static io.goshawkdb.collections.btree.ArrayLike.empty;
 import static io.goshawkdb.collections.btree.ArrayLike.wrap;
+import static io.goshawkdb.collections.btree.ArrayLike.wrapArray;
 
 import java.util.Comparator;
 import java.util.function.BiConsumer;
@@ -83,7 +84,8 @@ public class MemBTree<K> {
                     keys[i] = firstKey + i;
                 }
                 f.accept(
-                        new MemBTree<>(order, Comparator.naturalOrder(), new NodeImpl<>(wrap(keys), wrap(keys), empty())),
+                        new MemBTree<>(
+                                order, Comparator.naturalOrder(), new NodeImpl<>(wrapArray(keys), wrapArray(keys), empty())),
                         firstKey + n);
             }
             return;
