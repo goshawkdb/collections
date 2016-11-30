@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import io.goshawkdb.collections.btree.Cursor;
 import io.goshawkdb.collections.btree.MemBTree;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +16,47 @@ import java.util.function.Consumer;
 import org.junit.Test;
 
 public class MemBTreeTest {
+    @Test
+    public void testCursors() throws Exception {
+        final MemBTree<Integer> t = getTreeWithSomeElements(10);
+        final Cursor<Integer, Object> cursor = t.cursor();
+        assertThat(toList(cursor))
+                .containsExactly(
+                        0, 100, 2, 102, 4, 104, 6, 106, 8, 108, 10, 110, 12, 112, 14, 114, 16, 116,
+                        18, 118);
+    }
+
+    private MemBTree<Integer> getTreeWithSomeElements(int elements) {
+        final MemBTree<Integer> t = new MemBTree<>(3, Comparator.<Integer>naturalOrder());
+        for (int i = 0; i < elements; i++) {
+            t.put(2 * i, 100 + 2 * i);
+        }
+        return t;
+    }
+
+    @Test
+    public void testCursorAtLub() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            final MemBTree<Integer> t = getTreeWithSomeElements(i);
+            assertThat(t.cursor(-1).getKey()).isEqualTo(i > 0 ? 0 : null);
+            for (int j = 0; j < i; j++) {
+                assertThat(t.cursor(j).getKey()).isEqualTo(j + j % 2);
+            }
+            assertThat(t.cursor(2 * i - 1).inTree()).isEqualTo(false);
+            assertThat(t.cursor(20).inTree()).isEqualTo(false);
+        }
+    }
+
+    private List<Object> toList(Cursor<Integer, Object> cursor) {
+        final ArrayList<Object> r = new ArrayList<>();
+        while (cursor.inTree()) {
+            r.add(cursor.getKey());
+            r.add(cursor.getValue());
+            cursor.moveRight();
+        }
+        return r;
+    }
+
     @Test
     public void testPutSimple() throws Exception {
         final MemBTree<Integer> t = new MemBTree<>(3, Comparator.<Integer>naturalOrder());

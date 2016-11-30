@@ -4,6 +4,7 @@ import static io.goshawkdb.collections.btree.ArrayLike.empty;
 import static io.goshawkdb.collections.btree.ArrayLike.wrap;
 
 import java.util.Comparator;
+import java.util.Stack;
 import java.util.function.BiConsumer;
 
 class AbstractBTree<K, V, N extends Node<K, V, N>> {
@@ -63,6 +64,55 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
 
     V find(K key) {
         return find(root, key);
+    }
+
+    public Cursor<K, V> cursor() {
+        final Stack<Cursor.Frame<K, V, ?>> stack = new Stack<>();
+        stack.push(new Cursor.Frame<>(this.getRoot(), 0));
+        while (stack.peek().canMoveDown()) {
+            stack.push(stack.peek().getFrameBelow());
+        }
+        return new Cursor<>(stack);
+    }
+
+    // get a cursor pointing at k's least-upper-bound
+    public Cursor<K, V> cursor(K k) {
+        final Stack<Cursor.Frame<K, V, N>> stack = new Stack<>();
+        final N root = getRoot();
+        {
+            final Lub lub = findLub(root, k);
+            if (root.isLeaf() && lub.i == root.getKeys().size()) {
+                return new Cursor<>(new Stack<>());
+            }
+            stack.push(new Cursor.Frame<>(root, lub.i));
+            if (lub.exact) {
+                return new Cursor<>(forgetTypeParam(stack));
+            }
+        }
+        while (!stack.peek().node.isLeaf()) {
+            final N n = stack.peek().node.getChildren().get(stack.peek().i);
+            final Lub lub = findLub(n, k);
+            if (n.isLeaf() && lub.i == n.getKeys().size()) {
+                stack.push(new Cursor.Frame<>(n, lub.i - 1));
+                final Cursor<K, V> c = new Cursor<>(forgetTypeParam(stack));
+                c.moveRight();
+                return c;
+            }
+            stack.push(new Cursor.Frame<>(n, lub.i));
+            if (lub.exact) {
+                break;
+            }
+        }
+        return new Cursor<>(forgetTypeParam(stack));
+    }
+
+    private <K1, V1, N1 extends Node<K1, V1, N1>> Stack<Cursor.Frame<K1, V1, ?>> forgetTypeParam(
+            Stack<Cursor.Frame<K1, V1, N1>> stack) {
+        final Stack<Cursor.Frame<K1, V1, ?>> stack1 = new Stack<>();
+        for (Cursor.Frame<K1, V1, N1> frame : stack) {
+            stack1.add(frame);
+        }
+        return stack1;
     }
 
     private Split put(N node, boolean isRoot, K key, V value) {

@@ -44,7 +44,7 @@ public class MemBTree<K> {
         return b.toString();
     }
 
-    private void sketch(NodeImpl<K> node, StringBuilder b) {
+    static <K> void sketch(NodeImpl<K> node, StringBuilder b) {
         b.append('(');
         final int n = node.getKeys().size();
         for (int i = 0; i < n; i++) {
@@ -139,6 +139,14 @@ public class MemBTree<K> {
 
     public MemBTree<K> copy() {
         return new MemBTree<>(order, comparator, getRoot().copy());
+    }
+
+    public Cursor<K, Object> cursor() {
+        return tree.cursor();
+    }
+
+    public Cursor<K, Object> cursor(K k) {
+        return tree.cursor(k);
     }
 
     static class NodeImpl<K> implements Node<K, Object, NodeImpl<K>> {
