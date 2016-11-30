@@ -1,5 +1,6 @@
 package io.goshawkdb.collections.test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 import io.goshawkdb.client.Connection;
@@ -29,52 +30,52 @@ public abstract class CreateTestBase<T> extends TestBase {
         super();
     }
 
-    protected abstract T create(final Connection c) throws Exception;
+    protected abstract TransactionResult<T> create(final Connection c);
 
-    protected abstract void assertSize(T collection, final int expected) throws Exception;
+    protected abstract TransactionResult<Integer> size(T collection);
 
-    protected abstract void put(T collection, byte[] bytes, GoshawkObjRef value) throws Exception;
+    protected abstract TransactionResult<Object> put(T collection, byte[] bytes, GoshawkObjRef value);
 
-    protected abstract GoshawkObjRef find(T collection, byte[] bytes) throws Exception;
+    protected abstract TransactionResult<GoshawkObjRef> find(T collection, byte[] bytes);
 
-    protected abstract void forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action) throws Exception;
+    protected abstract TransactionResult<Object> forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action);
 
     @Test
     public void createNewTest() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            final T collection = create(c);
+            final T collection = create(c).getResultOrRethrow();
             assertSize(collection, 0);
         } finally {
             shutdown();
         }
     }
 
+    private void assertSize(T collection, int i) throws Exception {
+        assertThat(size(collection).getResultOrRethrow()).isEqualTo(i);
+    }
+
     @Test
     public void putGetTestForEach() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            final T collection = create(c);
+            final T collection = create(c).getResultOrRethrow();
 
             int objCount = 1024;
             // create objs
-            TransactionResult<Map<String, GoshawkObjRef>> r0 =
+            final Map<String, GoshawkObjRef> m =
                     c.runTransaction(
-                            txn -> {
-                                final Map<String, GoshawkObjRef> m = new HashMap<>();
-                                for (int idx = 0; idx < objCount; idx++) {
-                                    final String str = "" + idx;
-                                    final GoshawkObjRef objRef = txn.createObject(ByteBuffer.wrap(str.getBytes()));
-                                    m.put(str, objRef);
-                                }
-                                return m;
-                            });
-            if (!r0.isSuccessful()) {
-                throw r0.cause;
-            }
-            final Map<String, GoshawkObjRef> m = r0.result;
-            final TransactionResult<Object> r1 =
-                    c.runTransaction(
+                                    txn -> {
+                                        final Map<String, GoshawkObjRef> m1 = new HashMap<>();
+                                        for (int idx = 0; idx < objCount; idx++) {
+                                            final String str = "" + idx;
+                                            final GoshawkObjRef objRef = txn.createObject(ByteBuffer.wrap(str.getBytes()));
+                                            m1.put(str, objRef);
+                                        }
+                                        return m1;
+                                    })
+                            .getResultOrRethrow();
+            c.runTransaction(
                             txn -> {
                                 m.forEach(
                                         (key, value) -> {
@@ -86,16 +87,14 @@ public abstract class CreateTestBase<T> extends TestBase {
                                             }
                                         });
                                 return null;
-                            });
-            if (!r1.isSuccessful()) {
-                throw r1.cause;
-            }
+                            })
+                    .getResultOrRethrow();
             assertSize(collection, objCount);
 
             m.forEach(
                     (key, value) -> {
                         try {
-                            final GoshawkObjRef objRefFound = find(collection, key.getBytes());
+                            final GoshawkObjRef objRefFound = find(collection, key.getBytes()).getResultOrRethrow();
                             if (objRefFound == null) {
                                 fail("Failed to find entry for " + key);
                             } else if (!objRefFound.referencesSameAs(value)) {
@@ -107,44 +106,38 @@ public abstract class CreateTestBase<T> extends TestBase {
                     });
             assertSize(collection, objCount);
 
-            final TransactionResult<Object> r2 =
-                    c.runTransaction(
+            c.runTransaction(
                             txn -> {
                                 final Set<String> covered = new HashSet<>();
-                                try {
-                                    forEach(
-                                            collection,
-                                            (key, value) -> {
-                                                final String str = new String(key);
-                                                if (covered.contains(str)) {
-                                                    fail("forEach yielded key twice! " + str);
-                                                }
-                                                covered.add(str);
-                                                final GoshawkObjRef ref = m.get(str);
-                                                if (ref == null) {
-                                                    fail("forEach yielded unknown key: " + str);
-                                                } else if (!ref.referencesSameAs(value)) {
-                                                    fail(
-                                                            "forEach yielded unexpected value for key "
-                                                                    + str
-                                                                    + " (expected "
-                                                                    + ref
-                                                                    + "; actual "
-                                                                    + value
-                                                                    + ")");
-                                                }
-                                            });
-                                } catch (Exception e) {
-                                    throw new TransactionAbortedException(e);
-                                }
+                                forEach(
+                                                collection,
+                                                (key, value) -> {
+                                                    final String str = new String(key);
+                                                    if (covered.contains(str)) {
+                                                        fail("forEach yielded key twice! " + str);
+                                                    }
+                                                    covered.add(str);
+                                                    final GoshawkObjRef ref = m.get(str);
+                                                    if (ref == null) {
+                                                        fail("forEach yielded unknown key: " + str);
+                                                    } else if (!ref.referencesSameAs(value)) {
+                                                        fail(
+                                                                "forEach yielded unexpected value for key "
+                                                                        + str
+                                                                        + " (expected "
+                                                                        + ref
+                                                                        + "; actual "
+                                                                        + value
+                                                                        + ")");
+                                                    }
+                                                })
+                                        .getResultOrAbort();
                                 if (covered.size() != m.size()) {
                                     fail("forEach yielded incorrect number of entries: " + covered.size() + " vs " + m.size());
                                 }
                                 return null;
-                            });
-            if (!r2.isSuccessful()) {
-                throw r2.cause;
-            }
+                            })
+                    .getResultOrRethrow();
         } finally {
             shutdown();
         }

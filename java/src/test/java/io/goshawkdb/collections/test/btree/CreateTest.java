@@ -1,11 +1,10 @@
 package io.goshawkdb.collections.test.btree;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.junit.Assert.assertThat;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.btree.BTree;
 import io.goshawkdb.collections.btree.Cursor;
 import io.goshawkdb.collections.test.CreateTestBase;
@@ -27,35 +26,35 @@ public class CreateTest extends CreateTestBase<BTree> {
                     InvalidKeySpecException, InvalidKeyException {}
 
     @Override
-    protected BTree create(Connection c) throws Exception {
+    protected TransactionResult<BTree> create(Connection c) {
         return BTree.createEmpty(c);
     }
 
     @Override
-    protected void assertSize(BTree t, int expected) throws Exception {
-        assertThat(t.size(), equalTo(expected));
+    protected TransactionResult<Integer> size(BTree t) {
+        return t.size();
     }
 
     @Override
-    protected void put(BTree t, byte[] bytes, GoshawkObjRef value) throws Exception {
-        t.put(bytes, value);
+    protected TransactionResult<Object> put(BTree t, byte[] bytes, GoshawkObjRef value) {
+        return t.put(bytes, value);
     }
 
     @Override
-    protected GoshawkObjRef find(BTree t, byte[] key) throws Exception {
+    protected TransactionResult<GoshawkObjRef> find(BTree t, byte[] key) {
         return t.find(key);
     }
 
     @Override
-    protected void forEach(BTree t, BiConsumer<byte[], GoshawkObjRef> action) throws Exception {
-        t.forEach(action);
+    protected TransactionResult<Object> forEach(BTree t, BiConsumer<byte[], GoshawkObjRef> action) {
+        return t.forEach(action);
     }
 
     @Test
     public void testCursors() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            final BTree t = create(c);
+            final BTree t = create(c).getResultOrRethrow();
             for (int i = 0; i < 10; i++) {
                 t.put(Integer.toString(i).getBytes(), t.getRoot());
             }

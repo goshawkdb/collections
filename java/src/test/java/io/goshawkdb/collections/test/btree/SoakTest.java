@@ -2,6 +2,7 @@ package io.goshawkdb.collections.test.btree;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.btree.BTree;
 import io.goshawkdb.collections.test.SoakTestBase;
 import java.io.IOException;
@@ -18,22 +19,22 @@ public class SoakTest extends SoakTestBase<BTree> {
                     InvalidKeySpecException, InvalidKeyException {}
 
     @Override
-    protected BTree create(Connection c) throws Exception {
+    protected TransactionResult<BTree> create(Connection c) {
         return BTree.createEmpty(c);
     }
 
     @Override
-    protected void put(BTree t, byte[] key, GoshawkObjRef value) throws Exception {
-        t.put(key, value);
+    protected TransactionResult<Object> put(BTree t, byte[] key, GoshawkObjRef value) {
+        return t.put(key, value);
     }
 
     @Override
-    protected GoshawkObjRef find(BTree t, byte[] key) throws Exception {
+    protected TransactionResult<GoshawkObjRef> find(BTree t, byte[] key) {
         return t.find(key);
     }
 
     @Override
-    protected void remove(BTree t, byte[] key) throws Exception {
-        t.remove(key);
+    protected TransactionResult<Object> remove(BTree t, byte[] key) {
+        return t.remove(key);
     }
 }

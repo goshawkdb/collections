@@ -5,6 +5,7 @@ import static io.goshawkdb.collections.linearhash.Root.BucketCapacity;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.client.TransactionAbortedException;
 import io.goshawkdb.client.TransactionResult;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,7 +70,7 @@ final class Bucket {
                                         }
                                     }
                                 }
-                            } catch (Exception e) {
+                            } catch (IOException e) {
                                 throw new TransactionAbortedException(e);
                             }
                             return null;
@@ -78,7 +79,7 @@ final class Bucket {
             entries = null;
             value = null;
             refs.clear();
-            throw new TransactionAbortedException(result.cause);
+            result.getResultOrAbort();
         }
     }
 
@@ -95,7 +96,7 @@ final class Bucket {
                     }
                 }
                 value = ByteBuffer.wrap(packer.toByteArray());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 throw new TransactionAbortedException(e);
             }
         }
@@ -172,10 +173,7 @@ final class Bucket {
         Bucket b = next();
         if (b == null) {
             TransactionResult<GoshawkObjRef> result = lh.conn.runTransaction(txn -> txn.createObject(null));
-            if (!result.isSuccessful()) {
-                throw new TransactionAbortedException(result.cause);
-            }
-            b = createEmpty(lh, result.result);
+            b = createEmpty(lh, result.getResultOrAbort());
             final ChainMutationResult cmr = b.put(key, value);
             refs.set(0, cmr.b.objRef);
             // we didn't change any keys so don't need to serialize

@@ -28,12 +28,8 @@ public class BTree {
         return packer.toByteBuffer();
     }
 
-    public static BTree createEmpty(final Connection conn) throws Exception {
-        final TransactionResult<GoshawkObjRef> r = conn.runTransaction(txn -> txn.createObject(packKeys(empty())));
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
-        return new BTree(conn, r.result);
+    public static TransactionResult<BTree> createEmpty(final Connection conn) {
+        return conn.runTransaction(txn -> new BTree(conn, txn.createObject(packKeys(empty()))));
     }
 
     public GoshawkObjRef getRoot() {
@@ -56,36 +52,24 @@ public class BTree {
         return new NodeImpl(txn, obj, ArrayLike.wrap(keys), values, children);
     }
 
-    public int size() throws Exception {
-        final TransactionResult<Integer> r = conn.runTransaction(txn -> tree(txn).size());
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
-        return r.result;
+    public TransactionResult<Integer> size() {
+        return conn.runTransaction(txn -> tree(txn).size());
     }
 
     private AbstractBTree<byte[], GoshawkObjRef, NodeImpl> tree(Transaction txn) {
         return new AbstractBTree<>(128, toNode(txn, txn.getObject(root)), Lexicographic.INSTANCE);
     }
 
-    public void put(byte[] key, GoshawkObjRef value) throws Exception {
-        final TransactionResult<Void> r =
-                conn.runTransaction(
-                        txn -> {
-                            tree(txn).put(key, value);
-                            return null;
-                        });
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
+    public TransactionResult<Object> put(byte[] key, GoshawkObjRef value) {
+        return conn.runTransaction(
+                txn -> {
+                    tree(txn).put(key, value);
+                    return null;
+                });
     }
 
-    public GoshawkObjRef find(byte[] key) throws Exception {
-        final TransactionResult<GoshawkObjRef> r = conn.runTransaction(txn -> tree(txn).find(key));
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
-        return r.result;
+    public TransactionResult<GoshawkObjRef> find(byte[] key) {
+        return conn.runTransaction(txn -> tree(txn).find(key));
     }
 
     public Cursor<byte[], GoshawkObjRef> cursor() throws Exception {
@@ -96,28 +80,20 @@ public class BTree {
         return r.result;
     }
 
-    public void forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) throws Exception {
-        final TransactionResult<Void> r =
-                conn.runTransaction(
-                        txn -> {
-                            tree(txn).forEach(action);
-                            return null;
-                        });
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
+    public TransactionResult<Object> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {
+        return conn.runTransaction(
+                txn -> {
+                    tree(txn).forEach(action);
+                    return null;
+                });
     }
 
-    public void remove(byte[] key) throws Exception {
-        final TransactionResult<Void> r =
-                conn.runTransaction(
-                        txn -> {
-                            tree(txn).remove(key);
-                            return null;
-                        });
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
+    public TransactionResult<Object> remove(byte[] key) {
+        return conn.runTransaction(
+                txn -> {
+                    tree(txn).remove(key);
+                    return null;
+                });
     }
 
     static class NodeImpl implements Node<byte[], GoshawkObjRef, NodeImpl> {

@@ -25,19 +25,19 @@ public abstract class SoakTestBase<T> extends TestBase {
         super();
     }
 
-    protected abstract T create(final Connection c) throws Exception;
+    protected abstract TransactionResult<T> create(final Connection c);
 
-    protected abstract void put(T collection, byte[] bytes, GoshawkObjRef value) throws Exception;
+    protected abstract TransactionResult<Object> put(T collection, byte[] bytes, GoshawkObjRef value);
 
-    protected abstract GoshawkObjRef find(T collection, byte[] bytes) throws Exception;
+    protected abstract TransactionResult<GoshawkObjRef> find(T collection, byte[] bytes);
 
-    protected abstract void remove(T collection, byte[] bytes) throws Exception;
+    protected abstract TransactionResult<Object> remove(T collection, byte[] bytes);
 
     @Test
     public void soak() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            T collection = create(c);
+            T collection = create(c).getResultOrRethrow();
 
             final long seed = System.nanoTime();
             System.out.println("Seed: " + seed);
@@ -57,15 +57,14 @@ public abstract class SoakTestBase<T> extends TestBase {
                 }
 
                 if (op == -1) { // reset
-                    collection = create(c);
+                    collection = create(c).getResultOrRethrow();
                     contents.clear();
 
                 } else if (op < -1) { // add new key
                     final String key = String.valueOf(contentsSize);
                     final String value = "Hello" + i + "-" + key;
                     final T finalCollection = collection;
-                    TransactionResult<Object> result =
-                            c.runTransaction(
+                    c.runTransaction(
                                     txn -> {
                                         GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
                                         try {
@@ -74,10 +73,8 @@ public abstract class SoakTestBase<T> extends TestBase {
                                             throw new TransactionAbortedException(e);
                                         }
                                         return null;
-                                    });
-                    if (!result.isSuccessful()) {
-                        throw result.cause;
-                    }
+                                    })
+                            .getResultOrRethrow();
                     contents.put(key, value);
 
                 } else {
@@ -88,29 +85,23 @@ public abstract class SoakTestBase<T> extends TestBase {
                                 final String value = contents.get(key);
                                 final boolean inContents = !"".equals(value);
                                 final T finalCollection = collection;
-                                final TransactionResult<String> result =
+                                final String result =
                                         c.runTransaction(
-                                                txn -> {
-                                                    try {
-                                                        final GoshawkObjRef valueObj = find(finalCollection, key.getBytes());
-                                                        if (valueObj == null) {
-                                                            return null;
-                                                        } else {
-                                                            final ByteBuffer bb = valueObj.getValue();
-                                                            return byteBufferToString(bb, bb.limit());
-                                                        }
-                                                    } catch (Exception e) {
-                                                        throw new TransactionAbortedException(e);
-                                                    }
-                                                });
-                                if (!result.isSuccessful()) {
-                                    throw result.cause;
-                                }
-                                if (inContents && (result.result == null || !result.result.equals(value))) {
-                                    throw new IllegalStateException(
-                                            key + ": Failed to retrieve string value: " + result.result);
-                                } else if (!inContents && result.result != null) {
-                                    throw new IllegalStateException(key + ": Got result even after remove: " + result.result);
+                                                        txn -> {
+                                                            final GoshawkObjRef valueObj =
+                                                                    find(finalCollection, key.getBytes()).getResultOrAbort();
+                                                            if (valueObj == null) {
+                                                                return null;
+                                                            } else {
+                                                                final ByteBuffer bb = valueObj.getValue();
+                                                                return byteBufferToString(bb, bb.limit());
+                                                            }
+                                                        })
+                                                .getResultOrRethrow();
+                                if (inContents && (result == null || !result.equals(value))) {
+                                    throw new IllegalStateException(key + ": Failed to retrieve string value: " + result);
+                                } else if (!inContents && result != null) {
+                                    throw new IllegalStateException(key + ": Got result even after remove: " + result);
                                 }
                                 break;
                             }
@@ -138,21 +129,14 @@ public abstract class SoakTestBase<T> extends TestBase {
                                 }
                                 final String finalValue = value;
                                 final T finalCollection = collection;
-                                final TransactionResult<Object> result =
-                                        c.runTransaction(
+                                c.runTransaction(
                                                 txn -> {
                                                     GoshawkObjRef valueObj =
                                                             txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
-                                                    try {
-                                                        put(finalCollection, key.getBytes(), valueObj);
-                                                    } catch (Exception e) {
-                                                        throw new TransactionAbortedException(e);
-                                                    }
+                                                    put(finalCollection, key.getBytes(), valueObj).getResultOrAbort();
                                                     return null;
-                                                });
-                                if (!result.isSuccessful()) {
-                                    throw result.cause;
-                                }
+                                                })
+                                        .getResultOrRethrow();
                                 break;
                             }
 

@@ -1,10 +1,8 @@
 package io.goshawkdb.collections.test.linearhash;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.collections.test.CreateTestBase;
 import java.io.IOException;
@@ -22,27 +20,27 @@ public class CreateTest extends CreateTestBase<LinearHash> {
                     InvalidKeySpecException, InvalidKeyException {}
 
     @Override
-    protected LinearHash create(Connection c) throws Exception {
+    protected TransactionResult<LinearHash> create(Connection c) {
         return LinearHash.createEmpty(c);
     }
 
     @Override
-    protected void assertSize(LinearHash lh, int expected) throws Exception {
-        assertThat(lh.size(), equalTo(expected));
+    protected TransactionResult<Integer> size(LinearHash lh) {
+        return lh.size();
     }
 
     @Override
-    protected void put(LinearHash lh, byte[] bytes, GoshawkObjRef value) throws Exception {
-        lh.put(bytes, value);
+    protected TransactionResult<Object> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
+        return lh.put(bytes, value);
     }
 
     @Override
-    protected GoshawkObjRef find(LinearHash lh, byte[] bytes) throws Exception {
+    protected TransactionResult<GoshawkObjRef> find(LinearHash lh, byte[] bytes) {
         return lh.find(bytes);
     }
 
     @Override
-    protected void forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action) throws Exception {
-        lh.forEach(action);
+    protected TransactionResult<Object> forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action) {
+        return lh.forEach(action);
     }
 }

@@ -2,6 +2,7 @@ package io.goshawkdb.collections.test.linearhash;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.collections.test.SoakTestBase;
 import java.io.IOException;
@@ -18,22 +19,22 @@ public class SoakTest extends SoakTestBase<LinearHash> {
                     InvalidKeySpecException, InvalidKeyException {}
 
     @Override
-    protected LinearHash create(Connection c) throws Exception {
+    protected TransactionResult<LinearHash> create(Connection c) {
         return LinearHash.createEmpty(c);
     }
 
     @Override
-    protected void put(LinearHash lh, byte[] bytes, GoshawkObjRef value) throws Exception {
-        lh.put(bytes, value);
+    protected TransactionResult<Object> put(LinearHash lh, byte[] bytes, GoshawkObjRef value) {
+        return lh.put(bytes, value);
     }
 
     @Override
-    protected GoshawkObjRef find(LinearHash lh, byte[] bytes) throws Exception {
+    protected TransactionResult<GoshawkObjRef> find(LinearHash lh, byte[] bytes) {
         return lh.find(bytes);
     }
 
     @Override
-    protected void remove(LinearHash lh, byte[] bytes) throws Exception {
-        lh.remove(bytes);
+    protected TransactionResult<Object> remove(LinearHash lh, byte[] bytes) {
+        return lh.remove(bytes);
     }
 }
