@@ -20,8 +20,8 @@ import org.junit.Test;
 
 public abstract class SoakTestBase<T> extends TestBase {
     protected SoakTestBase()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {
         super();
     }
 
@@ -67,8 +67,7 @@ public abstract class SoakTestBase<T> extends TestBase {
                     TransactionResult<Object> result =
                             c.runTransaction(
                                     txn -> {
-                                        GoshawkObjRef valueObj =
-                                                txn.createObject(ByteBuffer.wrap(value.getBytes()));
+                                        GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
                                         try {
                                             put(finalCollection, key.getBytes(), valueObj);
                                         } catch (Exception e) {
@@ -93,17 +92,12 @@ public abstract class SoakTestBase<T> extends TestBase {
                                         c.runTransaction(
                                                 txn -> {
                                                     try {
-                                                        final GoshawkObjRef valueObj =
-                                                                find(
-                                                                        finalCollection,
-                                                                        key.getBytes());
+                                                        final GoshawkObjRef valueObj = find(finalCollection, key.getBytes());
                                                         if (valueObj == null) {
                                                             return null;
                                                         } else {
-                                                            final ByteBuffer bb =
-                                                                    valueObj.getValue();
-                                                            return byteBufferToString(
-                                                                    bb, bb.limit());
+                                                            final ByteBuffer bb = valueObj.getValue();
+                                                            return byteBufferToString(bb, bb.limit());
                                                         }
                                                     } catch (Exception e) {
                                                         throw new TransactionAbortedException(e);
@@ -112,18 +106,11 @@ public abstract class SoakTestBase<T> extends TestBase {
                                 if (!result.isSuccessful()) {
                                     throw result.cause;
                                 }
-                                if (inContents
-                                        && (result.result == null
-                                                || !result.result.equals(value))) {
+                                if (inContents && (result.result == null || !result.result.equals(value))) {
                                     throw new IllegalStateException(
-                                            key
-                                                    + ": Failed to retrieve string value: "
-                                                    + result.result);
+                                            key + ": Failed to retrieve string value: " + result.result);
                                 } else if (!inContents && result.result != null) {
-                                    throw new IllegalStateException(
-                                            key
-                                                    + ": Got result even after remove: "
-                                                    + result.result);
+                                    throw new IllegalStateException(key + ": Got result even after remove: " + result.result);
                                 }
                                 break;
                             }
@@ -155,14 +142,9 @@ public abstract class SoakTestBase<T> extends TestBase {
                                         c.runTransaction(
                                                 txn -> {
                                                     GoshawkObjRef valueObj =
-                                                            txn.createObject(
-                                                                    ByteBuffer.wrap(
-                                                                            finalValue.getBytes()));
+                                                            txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
                                                     try {
-                                                        put(
-                                                                finalCollection,
-                                                                key.getBytes(),
-                                                                valueObj);
+                                                        put(finalCollection, key.getBytes(), valueObj);
                                                     } catch (Exception e) {
                                                         throw new TransactionAbortedException(e);
                                                     }

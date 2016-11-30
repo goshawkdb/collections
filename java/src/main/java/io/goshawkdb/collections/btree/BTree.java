@@ -29,8 +29,7 @@ public class BTree {
     }
 
     public static BTree createEmpty(final Connection conn) throws Exception {
-        final TransactionResult<GoshawkObjRef> r =
-                conn.runTransaction(txn -> txn.createObject(packKeys(empty())));
+        final TransactionResult<GoshawkObjRef> r = conn.runTransaction(txn -> txn.createObject(packKeys(empty())));
         if (!r.isSuccessful()) {
             throw r.cause;
         }
@@ -52,8 +51,7 @@ public class BTree {
             throw new IllegalStateException("trailing garbage in leaf");
         }
         final ArrayLike<GoshawkObjRef> refs = ArrayLike.wrap(obj.getReferences());
-        final ArrayLike<NodeImpl> children =
-                refs.sliceFrom(keyCount).map((obj1) -> toNode(txn, obj1));
+        final ArrayLike<NodeImpl> children = refs.sliceFrom(keyCount).map((obj1) -> toNode(txn, obj1));
         final ArrayLike<GoshawkObjRef> values = refs.sliceTo(keyCount);
         return new NodeImpl(txn, obj, ArrayLike.wrap(keys), values, children);
     }
@@ -91,8 +89,7 @@ public class BTree {
     }
 
     public Cursor<byte[], GoshawkObjRef> cursor() throws Exception {
-        final TransactionResult<Cursor<byte[], GoshawkObjRef>> r =
-                conn.runTransaction(txn -> tree(txn).cursor());
+        final TransactionResult<Cursor<byte[], GoshawkObjRef>> r = conn.runTransaction(txn -> tree(txn).cursor());
         if (!r.isSuccessful()) {
             throw r.cause;
         }
@@ -159,10 +156,7 @@ public class BTree {
         }
 
         @Override
-        public void update(
-                ArrayLike<byte[]> newKeys,
-                ArrayLike<GoshawkObjRef> newVals,
-                ArrayLike<NodeImpl> newChildren) {
+        public void update(ArrayLike<byte[]> newKeys, ArrayLike<GoshawkObjRef> newVals, ArrayLike<NodeImpl> newChildren) {
             final ArrayLike<GoshawkObjRef> refs = newVals.concat(newChildren.map(NodeImpl::getObj));
             obj.set(packKeys(newKeys), refs.copyOut(GoshawkObjRef.class));
             keys = newKeys;
@@ -175,13 +169,9 @@ public class BTree {
         }
 
         @Override
-        public NodeImpl createSibling(
-                ArrayLike<byte[]> keys,
-                ArrayLike<GoshawkObjRef> vals,
-                ArrayLike<NodeImpl> children) {
+        public NodeImpl createSibling(ArrayLike<byte[]> keys, ArrayLike<GoshawkObjRef> vals, ArrayLike<NodeImpl> children) {
             final ArrayLike<GoshawkObjRef> refs = vals.concat(children.map(NodeImpl::getObj));
-            final GoshawkObjRef obj =
-                    txn.createObject(packKeys(keys), refs.copyOut(GoshawkObjRef.class));
+            final GoshawkObjRef obj = txn.createObject(packKeys(keys), refs.copyOut(GoshawkObjRef.class));
             return new NodeImpl(txn, obj, keys, vals, children);
         }
     }

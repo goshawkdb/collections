@@ -14,8 +14,8 @@ import java.security.spec.InvalidKeySpecException;
 
 public class SoakTest extends SoakTestBase<LinearHash> {
     public SoakTest()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected LinearHash create(Connection c) throws Exception {

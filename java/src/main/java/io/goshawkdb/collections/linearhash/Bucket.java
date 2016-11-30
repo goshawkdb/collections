@@ -51,15 +51,13 @@ final class Bucket {
                             value = objRef.getValue();
                             refs.clear();
                             Collections.addAll(refs, objRef.getReferences());
-                            try (final MessageUnpacker unpacker =
-                                    MessagePack.newDefaultUnpacker(value)) {
+                            try (final MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(value)) {
                                 while (unpacker.hasNext()) {
                                     MessageFormat f = unpacker.getNextFormat();
                                     if (!(f == MessageFormat.FIXARRAY
                                             || f == MessageFormat.ARRAY16
                                             || f == MessageFormat.ARRAY32)) {
-                                        throw new IllegalArgumentException(
-                                                "value does not contain a LinearHash bucket");
+                                        throw new IllegalArgumentException("value does not contain a LinearHash bucket");
                                     }
                                     entries = new byte[unpacker.unpackArrayHeader()][];
                                     for (int idx = 0; idx < entries.length; idx++) {
@@ -144,8 +142,7 @@ final class Bucket {
         }
     }
 
-    private ChainMutationResult putInSlot(
-            final byte[] key, final GoshawkObjRef value, final int slot) {
+    private ChainMutationResult putInSlot(final byte[] key, final GoshawkObjRef value, final int slot) {
         entries[slot] = key;
         final int refSlot = slot + 1;
         if (refSlot == refs.size()) {
@@ -174,8 +171,7 @@ final class Bucket {
     private ChainMutationResult putInNext(final byte[] key, final GoshawkObjRef value) {
         Bucket b = next();
         if (b == null) {
-            TransactionResult<GoshawkObjRef> result =
-                    lh.conn.runTransaction(txn -> txn.createObject(null));
+            TransactionResult<GoshawkObjRef> result = lh.conn.runTransaction(txn -> txn.createObject(null));
             if (!result.isSuccessful()) {
                 throw new TransactionAbortedException(result.cause);
             }

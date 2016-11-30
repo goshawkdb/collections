@@ -135,8 +135,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
     private Split putAt(N node, boolean isRoot, K key, V value, N child, int i) {
         final ArrayLike<K> newKeys = node.getKeys().spliceIn(i, key);
         final ArrayLike<V> newVals = node.getValues().spliceIn(i, value);
-        final ArrayLike<N> newChildren =
-                child == null ? node.getChildren() : node.getChildren().spliceIn(i, child);
+        final ArrayLike<N> newChildren = child == null ? node.getChildren() : node.getChildren().spliceIn(i, child);
         if (child == null) {
             // leaf
             if (newKeys.size() > maxLeafKeys) {
@@ -153,12 +152,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         return null;
     }
 
-    private Split split(
-            N node,
-            ArrayLike<K> newKeys,
-            ArrayLike<V> newVals,
-            ArrayLike<N> newChildren,
-            int median) {
+    private Split split(N node, ArrayLike<K> newKeys, ArrayLike<V> newVals, ArrayLike<N> newChildren, int median) {
         final ArrayLike<K> sibKeys = newKeys.sliceTo(median);
         final ArrayLike<K> myKeys = newKeys.sliceFrom(median + 1);
         final ArrayLike<V> sibVals = newVals.sliceTo(median);
@@ -180,8 +174,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         return new Split(sib, newKeys.get(median), newVals.get(median));
     }
 
-    private void checkSizesLeaf(
-            boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
+    private void checkSizesLeaf(boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
         if (values.size() != keys.size()) {
             throw new IllegalStateException("wrong number of values");
         }
@@ -193,13 +186,11 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         }
     }
 
-    private void checkSizesNonLeaf(
-            boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
+    private void checkSizesNonLeaf(boolean isRoot, ArrayLike<?> keys, ArrayLike<?> values, ArrayLike<?> children) {
         if (values.size() != keys.size()) {
             throw new IllegalStateException("wrong number of values");
         }
-        if (!isRoot
-                && (children.size() < minNonLeafChildren || children.size() > maxNonLeafChildren)) {
+        if (!isRoot && (children.size() < minNonLeafChildren || children.size() > maxNonLeafChildren)) {
             throw new IllegalStateException(
                     String.format(
                             "wrong number of children: expected %d to %d, got %d",
@@ -215,8 +206,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         if (split == null) {
             return;
         }
-        final N newOldRoot =
-                root.createSibling(root.getKeys(), root.getValues(), root.getChildren());
+        final N newOldRoot = root.createSibling(root.getKeys(), root.getValues(), root.getChildren());
         root.update(wrap(split.key), wrap(split.value), wrap(split.sibling, newOldRoot));
     }
 
@@ -254,10 +244,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final Lub lub = findLub(node, key);
         if (node.isLeaf()) {
             if (lub.exact) {
-                node.update(
-                        node.getKeys().spliceOut(lub.i),
-                        node.getValues().spliceOut(lub.i),
-                        empty());
+                node.update(node.getKeys().spliceOut(lub.i), node.getValues().spliceOut(lub.i), empty());
                 return node.getKeys().size() < minLeafKeys;
             }
             // key wasn't there, but on the plus side, no re-balancing is needed!
@@ -266,10 +253,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final N left = node.getChildren().get(lub.i);
         if (lub.exact) {
             final Pop pop = pop(left);
-            node.update(
-                    node.getKeys().with(lub.i, pop.key),
-                    node.getValues().with(lub.i, pop.value),
-                    node.getChildren());
+            node.update(node.getKeys().with(lub.i, pop.key), node.getValues().with(lub.i, pop.value), node.getChildren());
             if (pop.underflow) {
                 return fixUnderflow(node, lub.i, isRoot);
             }
@@ -333,8 +317,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
                 wrap(cKey).concat(right.getKeys()),
                 wrap(cVal).concat(right.getValues()),
                 right.isLeaf() ? empty() : wrap(bChild).concat(right.getChildren()));
-        node.update(
-                node.getKeys().with(i, bKey), node.getValues().with(i, bVal), node.getChildren());
+        node.update(node.getKeys().with(i, bKey), node.getValues().with(i, bVal), node.getChildren());
     }
 
     // child i      k/v i        child i + 1
@@ -357,8 +340,7 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
                 right.getKeys().withoutFirst(),
                 right.getValues().withoutFirst(),
                 right.isLeaf() ? empty() : right.getChildren().withoutFirst());
-        node.update(
-                node.getKeys().with(i, cKey), node.getValues().with(i, cVal), node.getChildren());
+        node.update(node.getKeys().with(i, cKey), node.getValues().with(i, cVal), node.getChildren());
     }
 
     // merge the i'th key and (i + 1)'st child of node into the i'th child, thereby losing one key and one child
@@ -367,10 +349,8 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final N rightSibling = node.getChildren().get(i + 1);
         final K key = node.getKeys().get(i);
         final V value = node.getValues().get(i);
-        final ArrayLike<K> newChildKeys =
-                child.getKeys().concat(wrap(key)).concat(rightSibling.getKeys());
-        final ArrayLike<V> newChildVals =
-                child.getValues().concat(wrap(value)).concat(rightSibling.getValues());
+        final ArrayLike<K> newChildKeys = child.getKeys().concat(wrap(key)).concat(rightSibling.getKeys());
+        final ArrayLike<V> newChildVals = child.getValues().concat(wrap(value)).concat(rightSibling.getValues());
         final ArrayLike<N> newChildChildren;
         if (child.isLeaf()) {
             newChildChildren = empty();

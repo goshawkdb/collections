@@ -14,8 +14,8 @@ import java.security.spec.InvalidKeySpecException;
 
 public class SoakTest extends SoakTestBase<BTree> {
     public SoakTest()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected BTree create(Connection c) throws Exception {

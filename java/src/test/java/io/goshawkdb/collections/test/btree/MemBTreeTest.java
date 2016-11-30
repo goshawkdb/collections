@@ -21,9 +21,7 @@ public class MemBTreeTest {
         final MemBTree<Integer> t = getTreeWithSomeElements(10);
         final Cursor<Integer, Object> cursor = t.cursor();
         assertThat(toList(cursor))
-                .containsExactly(
-                        0, 100, 2, 102, 4, 104, 6, 106, 8, 108, 10, 110, 12, 112, 14, 114, 16, 116,
-                        18, 118);
+                .containsExactly(0, 100, 2, 102, 4, 104, 6, 106, 8, 108, 10, 110, 12, 112, 14, 114, 16, 116, 18, 118);
     }
 
     private MemBTree<Integer> getTreeWithSomeElements(int elements) {
@@ -65,14 +63,10 @@ public class MemBTreeTest {
             t.put(i, 100 + i);
         }
         assertThat(toListViaForeach(t))
-                .containsExactly(
-                        0, 100, 1, 101, 2, 102, 3, 103, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9,
-                        109);
+                .containsExactly(0, 100, 1, 101, 2, 102, 3, 103, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9, 109);
         t.put(3, 300);
         assertThat(toListViaForeach(t))
-                .containsExactly(
-                        0, 100, 1, 101, 2, 102, 3, 300, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9,
-                        109);
+                .containsExactly(0, 100, 1, 101, 2, 102, 3, 300, 4, 104, 5, 105, 6, 106, 7, 107, 8, 108, 9, 109);
     }
 
     private List<Object> toListViaForeach(MemBTree<Integer> t) {
@@ -116,8 +110,7 @@ public class MemBTreeTest {
         forEachPerm(
                 n,
                 p -> {
-                    final MemBTree<Integer> t =
-                            new MemBTree<>(order, Comparator.<Integer>naturalOrder());
+                    final MemBTree<Integer> t = new MemBTree<>(order, Comparator.<Integer>naturalOrder());
                     for (int i = 0; i < n; i++) {
                         t.put(i, i);
                         t.checkInvariants();

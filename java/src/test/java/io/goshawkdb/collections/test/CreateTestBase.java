@@ -24,8 +24,8 @@ import org.junit.Test;
 
 public abstract class CreateTestBase<T> extends TestBase {
     protected CreateTestBase()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {
         super();
     }
 
@@ -37,8 +37,7 @@ public abstract class CreateTestBase<T> extends TestBase {
 
     protected abstract GoshawkObjRef find(T collection, byte[] bytes) throws Exception;
 
-    protected abstract void forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action)
-            throws Exception;
+    protected abstract void forEach(T collection, BiConsumer<byte[], GoshawkObjRef> action) throws Exception;
 
     @Test
     public void createNewTest() throws Exception {
@@ -65,8 +64,7 @@ public abstract class CreateTestBase<T> extends TestBase {
                                 final Map<String, GoshawkObjRef> m = new HashMap<>();
                                 for (int idx = 0; idx < objCount; idx++) {
                                     final String str = "" + idx;
-                                    final GoshawkObjRef objRef =
-                                            txn.createObject(ByteBuffer.wrap(str.getBytes()));
+                                    final GoshawkObjRef objRef = txn.createObject(ByteBuffer.wrap(str.getBytes()));
                                     m.put(str, objRef);
                                 }
                                 return m;
@@ -101,13 +99,7 @@ public abstract class CreateTestBase<T> extends TestBase {
                             if (objRefFound == null) {
                                 fail("Failed to find entry for " + key);
                             } else if (!objRefFound.referencesSameAs(value)) {
-                                fail(
-                                        "Entry for "
-                                                + key
-                                                + " has value in "
-                                                + objRefFound
-                                                + " instead of "
-                                                + value);
+                                fail("Entry for " + key + " has value in " + objRefFound + " instead of " + value);
                             }
                         } catch (Exception e) {
                             throw new RuntimeException(e);
@@ -146,11 +138,7 @@ public abstract class CreateTestBase<T> extends TestBase {
                                     throw new TransactionAbortedException(e);
                                 }
                                 if (covered.size() != m.size()) {
-                                    fail(
-                                            "forEach yielded incorrect number of entries: "
-                                                    + covered.size()
-                                                    + " vs "
-                                                    + m.size());
+                                    fail("forEach yielded incorrect number of entries: " + covered.size() + " vs " + m.size());
                                 }
                                 return null;
                             });

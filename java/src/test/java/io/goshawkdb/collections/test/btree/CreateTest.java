@@ -23,8 +23,8 @@ import org.junit.Test;
 
 public class CreateTest extends CreateTestBase<BTree> {
     public CreateTest()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected BTree create(Connection c) throws Exception {
@@ -64,9 +64,7 @@ public class CreateTest extends CreateTestBase<BTree> {
             for (int i = 0; i < 10; i++) {
                 expected.add(Integer.toString(i).getBytes());
             }
-            assertThat(toList(cursor))
-                    .filteredOn(e -> e instanceof byte[])
-                    .containsExactlyElementsOf(expected);
+            assertThat(toList(cursor)).filteredOn(e -> e instanceof byte[]).containsExactlyElementsOf(expected);
         } finally {
             shutdown();
         }

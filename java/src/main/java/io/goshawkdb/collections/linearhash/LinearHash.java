@@ -11,20 +11,18 @@ import java.util.Arrays;
 import java.util.function.BiConsumer;
 
 /**
- * A LinearHash is a map structure using the linear-hashing algorithm. This implementation uses the
- * SipHash hashing algorithm, which is available on many platforms and languages, and uses msgpack
- * as the serialization format for the LinearHash state, which again, is widely available.
+ * A LinearHash is a map structure using the linear-hashing algorithm. This implementation uses the SipHash hashing algorithm,
+ * which is available on many platforms and languages, and uses msgpack as the serialization format for the LinearHash state,
+ * which again, is widely available.
  *
- * <p>Multiple connections may interact with the same underlying LHash objects at the same time, as
- * GoshawkDB ensures through the use of strong serialization that any dependent operations are
- * safely ordered.
+ * <p>Multiple connections may interact with the same underlying LHash objects at the same time, as GoshawkDB ensures through
+ * the use of strong serialization that any dependent operations are safely ordered.
  */
 public class LinearHash {
     /**
-     * The connection used to create this LinearHash object. As usual with GoshawkDB, objects are
-     * scoped to connections so you should not use the same LinearHash object from multiple
-     * connections. You can have multiple LinearHash objects for the same underlying set of
-     * GoshawkDB objects.
+     * The connection used to create this LinearHash object. As usual with GoshawkDB, objects are scoped to connections so you
+     * should not use the same LinearHash object from multiple connections. You can have multiple LinearHash objects for the
+     * same underlying set of GoshawkDB objects.
      */
     public final Connection conn;
     /** The underlying Object in GoshawkDB which holds the root data for the LHash. */
@@ -35,10 +33,9 @@ public class LinearHash {
     private SipHash sipHash;
 
     /**
-     * Create a LinearHash object from an existing given GoshawkDB Object. Use this to regain access
-     * to an existing LinearHash which has already been created. This function does not do any
-     * initialisation: it assumes the {@link GoshawkObjRef} passed is already initialised for
-     * LinearHash.
+     * Create a LinearHash object from an existing given GoshawkDB Object. Use this to regain access to an existing LinearHash
+     * which has already been created. This function does not do any initialisation: it assumes the {@link GoshawkObjRef}
+     * passed is already initialised for LinearHash.
      *
      * @param c The connection this {@link LinearHash} object will be scoped to.
      * @param ref The {@link GoshawkObjRef} which contains the root state of the {@link LinearHash}
@@ -49,8 +46,7 @@ public class LinearHash {
     }
 
     /**
-     * Create a brand new empty LinearHash. This creates a new GoshawkDB Object and initialises it
-     * for use as an LHash.
+     * Create a brand new empty LinearHash. This creates a new GoshawkDB Object and initialises it for use as an LHash.
      *
      * @param c The connection this {@link LinearHash} object will be scoped to.
      * @return The new {@link LinearHash}
@@ -113,9 +109,8 @@ public class LinearHash {
     }
 
     /**
-     * Search the LinearHash for the given key. The key is hashed using the SipHash algorithm, and
-     * comparison between keys is done with {@link Arrays}.equals. If no matching key is found, null
-     * is returned.
+     * Search the LinearHash for the given key. The key is hashed using the SipHash algorithm, and comparison between keys is
+     * done with {@link Arrays}.equals. If no matching key is found, null is returned.
      *
      * @param key The key to search for
      * @return The corresponding value if the key is found; null otherwise.
@@ -137,9 +132,9 @@ public class LinearHash {
     }
 
     /**
-     * Idempotently add the given key and value to the LinearHash. The key is hashed using the
-     * SipHash algorithm, and comparison between keys is done with {@link Arrays}.equals. If a
-     * matching key is found, the corresponding value is updated.
+     * Idempotently add the given key and value to the LinearHash. The key is hashed using the SipHash algorithm, and
+     * comparison between keys is done with {@link Arrays}.equals. If a matching key is found, the corresponding value is
+     * updated.
      *
      * @param key The key to search for and add.
      * @param value The value to associate with the key.
@@ -170,8 +165,8 @@ public class LinearHash {
     }
 
     /**
-     * Idempotently remove any matching entry from the LinearHash. The key is hashed using the
-     * SipHash algorithm, and comparison between keys is done with {@link Arrays}.equals.
+     * Idempotently remove any matching entry from the LinearHash. The key is hashed using the SipHash algorithm, and
+     * comparison between keys is done with {@link Arrays}.equals.
      *
      * @param key The to search for and remove.
      * @throws Exception if an unexpected error occurs during the transactions.
@@ -204,11 +199,10 @@ public class LinearHash {
     }
 
     /**
-     * Iterate over the entries in the LinearHash. Iteration order is undefined. Also note that as
-     * usual, the transaction in which the iteration is occurring may need to restart one or more
-     * times in which case the callback may be invoked several times for the same entry. To detect
-     * this, call forEach from within a transaction of your own. Iteration will stop as soon as the
-     * callback throws an error, which will also abort the transaction.
+     * Iterate over the entries in the LinearHash. Iteration order is undefined. Also note that as usual, the transaction in
+     * which the iteration is occurring may need to restart one or more times in which case the callback may be invoked several
+     * times for the same entry. To detect this, call forEach from within a transaction of your own. Iteration will stop as
+     * soon as the callback throws an error, which will also abort the transaction.
      *
      * @param action The action to be performed for each entry
      * @throws Exception if an unexpected error occurs during the transactions.
@@ -252,8 +246,7 @@ public class LinearHash {
     private void split() {
         final int sOld = root.splitIndex.intValueExact();
         Bucket b = Bucket.load(this, refs[sOld]);
-        TransactionResult<GoshawkObjRef> result =
-                conn.runTransaction(txn -> txn.createObject(null));
+        TransactionResult<GoshawkObjRef> result = conn.runTransaction(txn -> txn.createObject(null));
         if (!result.isSuccessful()) {
             throw new TransactionAbortedException(result.cause);
         }
@@ -281,8 +274,7 @@ public class LinearHash {
                 } else if (root.bucketIndex(hash(b.entries[idx])) == sOld) {
                     emptied = false;
                 } else {
-                    final Bucket.ChainMutationResult cmr =
-                            bNew.put(b.entries[idx], b.refs.get(idx + 1));
+                    final Bucket.ChainMutationResult cmr = bNew.put(b.entries[idx], b.refs.get(idx + 1));
                     root.bucketCount += cmr.chainDelta;
                     b.entries[idx] = null;
                     b.refs.set(idx + 1, b.objRef);

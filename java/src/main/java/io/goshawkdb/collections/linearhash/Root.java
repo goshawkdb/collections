@@ -38,15 +38,12 @@ final class Root {
         try (final MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(data)) {
             while (unpacker.hasNext()) {
                 MessageFormat f = unpacker.getNextFormat();
-                if (!(f == MessageFormat.FIXMAP
-                        || f == MessageFormat.MAP16
-                        || f == MessageFormat.MAP32)) {
+                if (!(f == MessageFormat.FIXMAP || f == MessageFormat.MAP16 || f == MessageFormat.MAP32)) {
                     throw new IllegalArgumentException("data does not contain a LinearHash root");
                 }
                 int pairs = unpacker.unpackMapHeader();
                 if (pairs != fieldCount) {
-                    throw new IllegalArgumentException(
-                            "Expected " + fieldCount + " pairs in root map. Found " + pairs);
+                    throw new IllegalArgumentException("Expected " + fieldCount + " pairs in root map. Found " + pairs);
                 }
                 for (; pairs > 0; pairs--) {
                     final String key = unpacker.unpackString();
@@ -70,8 +67,7 @@ final class Root {
                             hashkey = unpacker.readPayload(unpacker.unpackBinaryHeader());
                             break;
                         default:
-                            throw new IllegalArgumentException(
-                                    "Unexpected key in LinearHash root: " + key);
+                            throw new IllegalArgumentException("Unexpected key in LinearHash root: " + key);
                     }
                 }
             }

@@ -18,8 +18,8 @@ import java.util.function.BiConsumer;
 
 public class CreateTest extends CreateTestBase<LinearHash> {
     public CreateTest()
-            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException,
-                    KeyStoreException, IOException, InvalidKeySpecException, InvalidKeyException {}
+            throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
+                    InvalidKeySpecException, InvalidKeyException {}
 
     @Override
     protected LinearHash create(Connection c) throws Exception {
@@ -42,8 +42,7 @@ public class CreateTest extends CreateTestBase<LinearHash> {
     }
 
     @Override
-    protected void forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action)
-            throws Exception {
+    protected void forEach(LinearHash lh, BiConsumer<byte[], GoshawkObjRef> action) throws Exception {
         lh.forEach(action);
     }
 }

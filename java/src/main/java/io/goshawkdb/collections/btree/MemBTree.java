@@ -72,8 +72,7 @@ public class MemBTree<K> {
         tree.remove(key);
     }
 
-    public static void allTrees(
-            int order, int height, int firstKey, BiConsumer<MemBTree<Integer>, Integer> f) {
+    public static void allTrees(int order, int height, int firstKey, BiConsumer<MemBTree<Integer>, Integer> f) {
         if (height < 1) {
             throw new IllegalArgumentException();
         }
@@ -84,10 +83,7 @@ public class MemBTree<K> {
                     keys[i] = firstKey + i;
                 }
                 f.accept(
-                        new MemBTree<>(
-                                order,
-                                Comparator.naturalOrder(),
-                                new NodeImpl<>(wrap(keys), wrap(keys), empty())),
+                        new MemBTree<>(order, Comparator.naturalOrder(), new NodeImpl<>(wrap(keys), wrap(keys), empty())),
                         firstKey + n);
             }
             return;
@@ -98,19 +94,13 @@ public class MemBTree<K> {
                 firstKey,
                 order,
                 (ts, is) -> {
-                    final NodeImpl<Integer> node =
-                            new NodeImpl<>(
-                                    is.withoutLast(), is.withoutLast().map(i -> (Object) i), ts);
+                    final NodeImpl<Integer> node = new NodeImpl<>(is.withoutLast(), is.withoutLast().map(i -> (Object) i), ts);
                     f.accept(new MemBTree<>(order, Comparator.naturalOrder(), node), is.last());
                 });
     }
 
     private static void allTrees1(
-            int order,
-            int height,
-            int firstKey,
-            int n,
-            BiConsumer<ArrayLike<NodeImpl<Integer>>, ArrayLike<Integer>> f) {
+            int order, int height, int firstKey, int n, BiConsumer<ArrayLike<NodeImpl<Integer>>, ArrayLike<Integer>> f) {
         if (n < 1) {
             throw new IllegalArgumentException();
         }
@@ -176,18 +166,14 @@ public class MemBTree<K> {
         }
 
         @Override
-        public void update(
-                ArrayLike<K> newKeys,
-                ArrayLike<Object> newVals,
-                ArrayLike<NodeImpl<K>> newChildren) {
+        public void update(ArrayLike<K> newKeys, ArrayLike<Object> newVals, ArrayLike<NodeImpl<K>> newChildren) {
             keys = newKeys.copy();
             values = newVals.copy();
             children = newChildren.copy();
         }
 
         @Override
-        public NodeImpl<K> createSibling(
-                ArrayLike<K> keys, ArrayLike<Object> vals, ArrayLike<NodeImpl<K>> children) {
+        public NodeImpl<K> createSibling(ArrayLike<K> keys, ArrayLike<Object> vals, ArrayLike<NodeImpl<K>> children) {
             return new NodeImpl<>(keys, vals, children);
         }
 
@@ -206,11 +192,7 @@ public class MemBTree<K> {
             }
             if (!isLeaf()) {
                 for (int i = 0; i <= n; i++) {
-                    children.get(i)
-                            .checkKeyOrder(
-                                    comparator,
-                                    i > 0 ? keys.get(i - 1) : null,
-                                    i < n ? keys.get(i) : null);
+                    children.get(i).checkKeyOrder(comparator, i > 0 ? keys.get(i - 1) : null, i < n ? keys.get(i) : null);
                 }
             }
         }

@@ -50,16 +50,13 @@ public class MemSoakTest {
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
                             final Object valueObj = collection.find(key.getBytes());
-                            if (inContents
-                                    && (valueObj == null
-                                            || !value.equals(new String((byte[]) valueObj)))) {
+                            if (inContents && (valueObj == null || !value.equals(new String((byte[]) valueObj)))) {
                                 throw new IllegalStateException(
                                         String.format(
                                                 "%s: Failed to retrieve string value: got %s, expected %s",
                                                 key, new String((byte[]) valueObj), value));
                             } else if (!inContents && valueObj != null) {
-                                throw new IllegalStateException(
-                                        key + ": Got result even after remove: " + valueObj);
+                                throw new IllegalStateException(key + ": Got result even after remove: " + valueObj);
                             }
                             break;
                         }
