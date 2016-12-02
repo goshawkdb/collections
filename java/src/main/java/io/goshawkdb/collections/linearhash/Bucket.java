@@ -47,7 +47,7 @@ final class Bucket {
     }
 
     private void populate() {
-        TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+        lh.conn.runTransaction(txn -> {
             objRef = txn.getObject(objRef);
             value = objRef.getValue();
             refs.clear();
@@ -72,13 +72,14 @@ final class Bucket {
                 throw new TransactionAbortedException(e);
             }
             return null;
-        });
-        if (!result.isSuccessful()) {
-            entries = null;
-            value = null;
-            refs.clear();
-            result.getResultOrAbort();
-        }
+        }).andThen((nil, e) -> {
+            if (e != null) {
+                entries = null;
+                value = null;
+                refs.clear();
+            }
+            return nil;
+        }).getResultOrAbort();
     }
 
     void write(boolean updateEntries) {

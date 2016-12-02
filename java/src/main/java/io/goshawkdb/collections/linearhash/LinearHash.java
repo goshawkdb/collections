@@ -89,21 +89,22 @@ public class LinearHash {
     }
 
     private void populate() {
-        TransactionResult<Object> result = conn.runTransaction(txn -> {
+        conn.runTransaction(txn -> {
             objRef = txn.getObject(objRef);
             final ByteBuffer value = objRef.getValue();
             refs = objRef.getReferences();
             root = new Root(value);
             return null;
-        });
-        if (result.isSuccessful()) {
-            sipHash = new SipHash(root.hashkey);
-        } else {
-            root = null;
-            refs = null;
-            sipHash = null;
-            result.getResultOrAbort();
-        }
+        }).andThen((nil, e) -> {
+            if (e == null) {
+                sipHash = new SipHash(root.hashkey);
+            } else {
+                root = null;
+                refs = null;
+                sipHash = null;
+            }
+            return nil;
+        }).getResultOrAbort();
     }
 
     private void write() {
