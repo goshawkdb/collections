@@ -1,14 +1,16 @@
 package io.goshawkdb.collections.linearhash;
 
-import io.goshawkdb.client.TransactionAbortedException;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.security.SecureRandom;
 import org.msgpack.core.MessageBufferPacker;
 import org.msgpack.core.MessageFormat;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
+
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.security.SecureRandom;
+
+import io.goshawkdb.client.TransactionAbortedException;
 
 final class Root {
     static final int BucketCapacity = 64;
