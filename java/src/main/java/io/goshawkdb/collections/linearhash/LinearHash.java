@@ -64,7 +64,7 @@ public class LinearHash {
      * @return The new {@link LinearHash}
      */
     public static TransactionResult<LinearHash> createEmpty(final Connection c) {
-        final TransactionResult<LinearHash> outcome = c.runTransaction(txn -> {
+        return c.runTransaction(txn -> {
             final GoshawkObjRef rootObjRef = txn.createObject(null);
             final LinearHash lh = new LinearHash(c, rootObjRef);
             lh.root = new Root();
@@ -79,13 +79,12 @@ public class LinearHash {
 
             lh.write();
             return lh;
+        }).andThen((lh, e) -> {
+            if (e == null) {
+                lh.sipHash = new SipHash(lh.root.hashkey);
+            }
+            return lh;
         });
-
-        if (outcome.isSuccessful()) {
-            final LinearHash lh = outcome.result;
-            lh.sipHash = new SipHash(lh.root.hashkey);
-        }
-        return outcome;
     }
 
     private void populate() {
