@@ -5,6 +5,7 @@ import org.msgpack.core.MessageFormat;
 import org.msgpack.core.MessagePack;
 import org.msgpack.core.MessageUnpacker;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +47,7 @@ final class Bucket {
     }
 
     private void populate() {
-        TransactionResult<Object> result = lh.conn.runTransaction(txn -> {
+        lh.conn.runTransaction(txn -> {
             objRef = txn.getObject(objRef);
             value = objRef.getValue();
             refs.clear();
@@ -67,17 +68,18 @@ final class Bucket {
                         }
                     }
                 }
-            } catch (Exception e) {
+            } catch (IOException e) {
                 throw new TransactionAbortedException(e);
             }
             return null;
-        });
-        if (!result.isSuccessful()) {
-            entries = null;
-            value = null;
-            refs.clear();
-            throw new TransactionAbortedException(result.cause);
-        }
+        }).andThen((nil, e) -> {
+            if (e != null) {
+                entries = null;
+                value = null;
+                refs.clear();
+            }
+            return nil;
+        }).getResultOrAbort();
     }
 
     void write(boolean updateEntries) {
@@ -93,7 +95,7 @@ final class Bucket {
                     }
                 }
                 value = ByteBuffer.wrap(packer.toByteArray());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 throw new TransactionAbortedException(e);
             }
         }
@@ -170,10 +172,7 @@ final class Bucket {
         Bucket b = next();
         if (b == null) {
             TransactionResult<GoshawkObjRef> result = lh.conn.runTransaction(txn -> txn.createObject(null));
-            if (!result.isSuccessful()) {
-                throw new TransactionAbortedException(result.cause);
-            }
-            b = createEmpty(lh, result.result);
+            b = createEmpty(lh, result.getResultOrAbort());
             final ChainMutationResult cmr = b.put(key, value);
             refs.set(0, cmr.b.objRef);
             // we didn't change any keys so don't need to serialize
