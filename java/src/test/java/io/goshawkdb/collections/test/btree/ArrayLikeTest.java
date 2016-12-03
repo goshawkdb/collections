@@ -1,15 +1,17 @@
 package io.goshawkdb.collections.test.btree;
 
+import org.junit.Test;
+
+import java.util.Arrays;
+
+import io.goshawkdb.collections.btree.ArrayLike;
+
 import static io.goshawkdb.collections.btree.ArrayLike.wrap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.quicktheories.quicktheories.QuickTheory.qt;
 import static org.quicktheories.quicktheories.generators.SourceDSL.arrays;
 import static org.quicktheories.quicktheories.generators.SourceDSL.integers;
-
-import io.goshawkdb.collections.btree.ArrayLike;
-import java.util.Arrays;
-import org.junit.Test;
 
 public class ArrayLikeTest {
     @Test

@@ -1,13 +1,14 @@
 package io.goshawkdb.collections.btree;
 
-import static io.goshawkdb.collections.btree.ArrayLike.empty;
+import java.nio.ByteBuffer;
+import java.util.function.BiConsumer;
 
 import io.goshawkdb.client.Connection;
 import io.goshawkdb.client.GoshawkObjRef;
 import io.goshawkdb.client.Transaction;
 import io.goshawkdb.client.TransactionResult;
-import java.nio.ByteBuffer;
-import java.util.function.BiConsumer;
+
+import static io.goshawkdb.collections.btree.ArrayLike.empty;
 
 public class BTree {
     private final Connection conn;

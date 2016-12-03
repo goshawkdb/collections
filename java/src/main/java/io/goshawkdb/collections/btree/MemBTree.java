@@ -1,12 +1,12 @@
 package io.goshawkdb.collections.btree;
 
+import java.util.Comparator;
+import java.util.function.BiConsumer;
+
 import static io.goshawkdb.collections.btree.AbstractBTree.ceilHalf;
 import static io.goshawkdb.collections.btree.ArrayLike.empty;
 import static io.goshawkdb.collections.btree.ArrayLike.wrap;
 import static io.goshawkdb.collections.btree.ArrayLike.wrapArray;
-
-import java.util.Comparator;
-import java.util.function.BiConsumer;
 
 public class MemBTree<K> {
     private final int order;

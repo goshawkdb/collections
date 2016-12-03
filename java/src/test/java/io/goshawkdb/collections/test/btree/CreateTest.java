@@ -1,13 +1,7 @@
 package io.goshawkdb.collections.test.btree;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.Test;
 
-import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionResult;
-import io.goshawkdb.collections.btree.BTree;
-import io.goshawkdb.collections.btree.Cursor;
-import io.goshawkdb.collections.test.CreateTestBase;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.KeyStoreException;
@@ -18,12 +12,21 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import org.junit.Test;
+
+import io.goshawkdb.client.Connection;
+import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
+import io.goshawkdb.collections.btree.BTree;
+import io.goshawkdb.collections.btree.Cursor;
+import io.goshawkdb.collections.test.CreateTestBase;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreateTest extends CreateTestBase<BTree> {
     public CreateTest()
             throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
-                    InvalidKeySpecException, InvalidKeyException {}
+            InvalidKeySpecException, InvalidKeyException {
+    }
 
     @Override
     protected TransactionResult<BTree> create(Connection c) {

@@ -1,10 +1,5 @@
 package io.goshawkdb.collections.test.btree;
 
-import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionResult;
-import io.goshawkdb.collections.btree.BTree;
-import io.goshawkdb.collections.test.SoakTestBase;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.KeyStoreException;
@@ -13,10 +8,17 @@ import java.security.NoSuchProviderException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 
+import io.goshawkdb.client.Connection;
+import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.TransactionResult;
+import io.goshawkdb.collections.btree.BTree;
+import io.goshawkdb.collections.test.SoakTestBase;
+
 public class SoakTest extends SoakTestBase<BTree> {
     public SoakTest()
             throws NoSuchProviderException, NoSuchAlgorithmException, CertificateException, KeyStoreException, IOException,
-                    InvalidKeySpecException, InvalidKeyException {}
+            InvalidKeySpecException, InvalidKeyException {
+    }
 
     @Override
     protected TransactionResult<BTree> create(Connection c) {

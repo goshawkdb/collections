@@ -1,11 +1,7 @@
 package io.goshawkdb.collections.test.btree;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
+import org.junit.Test;
 
-import io.goshawkdb.collections.btree.Cursor;
-import io.goshawkdb.collections.btree.MemBTree;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,7 +9,13 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
-import org.junit.Test;
+
+import io.goshawkdb.collections.btree.Cursor;
+import io.goshawkdb.collections.btree.MemBTree;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class MemBTreeTest {
     @Test
@@ -128,13 +130,13 @@ public class MemBTreeTest {
         final List<int[]> perms = new LinkedList<>();
         forEachPerm(3, p -> perms.add(Arrays.copyOf(p, p.length)));
         assertThat(perms.size(), equalTo(6));
-        assertThat(perms.get(0), equalTo(new int[] {0, 1, 2}));
-        assertThat(perms.get(1), equalTo(new int[] {0, 2, 1}));
-        assertThat(perms.get(2), equalTo(new int[] {1, 0, 2}));
-        assertThat(perms.get(3), equalTo(new int[] {1, 2, 0}));
-        assertThat(perms.get(4), equalTo(new int[] {2, 0, 1}));
-        assertThat(perms.get(5), equalTo(new int[] {2, 1, 0}));
-        final int[] n = new int[] {0};
+        assertThat(perms.get(0), equalTo(new int[]{0, 1, 2}));
+        assertThat(perms.get(1), equalTo(new int[]{0, 2, 1}));
+        assertThat(perms.get(2), equalTo(new int[]{1, 0, 2}));
+        assertThat(perms.get(3), equalTo(new int[]{1, 2, 0}));
+        assertThat(perms.get(4), equalTo(new int[]{2, 0, 1}));
+        assertThat(perms.get(5), equalTo(new int[]{2, 1, 0}));
+        final int[] n = new int[]{0};
         forEachPerm(6, p -> n[0]++);
         assertThat(n[0], equalTo(720));
     }

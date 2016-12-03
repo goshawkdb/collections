@@ -1,11 +1,11 @@
 package io.goshawkdb.collections.btree;
 
-import static io.goshawkdb.collections.btree.ArrayLike.empty;
-import static io.goshawkdb.collections.btree.ArrayLike.wrap;
-
 import java.util.Comparator;
 import java.util.Stack;
 import java.util.function.BiConsumer;
+
+import static io.goshawkdb.collections.btree.ArrayLike.empty;
+import static io.goshawkdb.collections.btree.ArrayLike.wrap;
 
 class AbstractBTree<K, V, N extends Node<K, V, N>> {
     private final int minNonLeafChildren;
