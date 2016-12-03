@@ -55,11 +55,11 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
         final Lub lub = findLub(node, key);
         if (lub.exact) {
             return node.getValues().get(lub.i);
-        }
-        if (!node.isLeaf()) {
+        } else if (!node.isLeaf()) {
             return find(node.getChildren().get(lub.i), key);
+        } else {
+            return null;
         }
-        return null;
     }
 
     V find(K key) {
@@ -78,8 +78,8 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
     // get a cursor pointing at k's least-upper-bound
     public Cursor<K, V> cursor(K k) {
         final Stack<Cursor.Frame<K, V, N>> stack = new Stack<>();
-        final N root = getRoot();
         {
+            final N root = getRoot();
             final Lub lub = findLub(root, k);
             if (root.isLeaf() && lub.i == root.getKeys().size()) {
                 return new Cursor<>(new Stack<>());
@@ -121,15 +121,16 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
             // hooray, we can just replace a ref
             node.update(node.getKeys(), node.getValues().with(lub.i, value), node.getChildren());
             return null;
-        }
-        if (node.isLeaf()) {
+        } else if (node.isLeaf()) {
             return putAt(node, isRoot, key, value, null, lub.i);
+        } else {
+            final Split split = put(node.getChildren().get(lub.i), false, key, value);
+            if (split == null) {
+                return null;
+            } else {
+                return putAt(node, isRoot, split.key, split.value, split.sibling, lub.i);
+            }
         }
-        final Split split = put(node.getChildren().get(lub.i), false, key, value);
-        if (split == null) {
-            return null;
-        }
-        return putAt(node, isRoot, split.key, split.value, split.sibling, lub.i);
     }
 
     private Split putAt(N node, boolean isRoot, K key, V value, N child, int i) {
@@ -246,24 +247,30 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
             if (lub.exact) {
                 node.update(node.getKeys().spliceOut(lub.i), node.getValues().spliceOut(lub.i), empty());
                 return node.getKeys().size() < minLeafKeys;
+            } else {
+                // key wasn't there, but on the plus side, no re-balancing is needed!
+                return false;
             }
-            // key wasn't there, but on the plus side, no re-balancing is needed!
-            return false;
-        }
-        final N left = node.getChildren().get(lub.i);
-        if (lub.exact) {
-            final Pop pop = pop(left);
-            node.update(node.getKeys().with(lub.i, pop.key), node.getValues().with(lub.i, pop.value), node.getChildren());
-            if (pop.underflow) {
-                return fixUnderflow(node, lub.i, isRoot);
+
+        } else {
+            final N left = node.getChildren().get(lub.i);
+            if (lub.exact) {
+                final Pop pop = pop(left);
+                node.update(node.getKeys().with(lub.i, pop.key), node.getValues().with(lub.i, pop.value), node.getChildren());
+                if (pop.underflow) {
+                    return fixUnderflow(node, lub.i, isRoot);
+                } else {
+                    return false;
+                }
+            } else {
+                final boolean underflow = remove(left, key, false);
+                if (underflow) {
+                    return fixUnderflow(node, lub.i, isRoot);
+                } else {
+                    return false;
+                }
             }
-            return false;
         }
-        final boolean underflow = remove(left, key, false);
-        if (underflow) {
-            return fixUnderflow(node, lub.i, isRoot);
-        }
-        return false;
     }
 
     private boolean fixUnderflow(N node, int i, boolean isRoot) {
@@ -382,8 +389,9 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
     private boolean hasSpare(N n) {
         if (n.isLeaf()) {
             return n.getKeys().size() > minLeafKeys;
+        } else {
+            return n.getChildren().size() > minNonLeafChildren;
         }
-        return n.getChildren().size() > minNonLeafChildren;
     }
 
     private Pop pop(N node) {
@@ -393,14 +401,16 @@ class AbstractBTree<K, V, N extends Node<K, V, N>> {
             final V val = node.getValues().get(n);
             node.update(node.getKeys().sliceTo(n), node.getValues().sliceTo(n), empty());
             return new Pop(key, val, node.getKeys().size() < minLeafKeys);
+        } else {
+            final int i = node.getChildren().size() - 1;
+            final N lastChild = node.getChildren().get(i);
+            final Pop pop = pop(lastChild);
+            if (pop.underflow) {
+                return new Pop(pop.key, pop.value, fixUnderflow(node, i, false));
+            } else {
+                return pop;
+            }
         }
-        final int i = node.getChildren().size() - 1;
-        final N lastChild = node.getChildren().get(i);
-        final Pop pop = pop(lastChild);
-        if (pop.underflow) {
-            return new Pop(pop.key, pop.value, fixUnderflow(node, i, false));
-        }
-        return pop;
     }
 
     private class Pop {

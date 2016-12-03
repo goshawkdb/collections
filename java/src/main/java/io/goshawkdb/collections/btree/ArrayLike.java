@@ -154,16 +154,18 @@ public interface ArrayLike<T> {
         public T get(int i) {
             if (i >= 0 && from + i < to) {
                 return delegate.get(from + i);
+            } else {
+                throw new IndexOutOfBoundsException();
             }
-            throw new IndexOutOfBoundsException();
         }
 
         @Override
         public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
             if (from + srcPos + length > to) {
                 throw new IndexOutOfBoundsException();
+            } else {
+                delegate.copyTo(from + srcPos, dst, dstPos, length);
             }
-            delegate.copyTo(from + srcPos, dst, dstPos, length);
         }
     }
 
@@ -211,8 +213,9 @@ public interface ArrayLike<T> {
         public T get(int j) {
             if (j == i) {
                 return t;
+            } else {
+                return delegate.get(j);
             }
-            return delegate.get(j);
         }
 
         @Override
@@ -244,21 +247,22 @@ public interface ArrayLike<T> {
         public T get(int i) {
             if (i < firstCount) {
                 return first.get(i);
+            } else {
+                return second.get(i - firstCount);
             }
-            return second.get(i - firstCount);
         }
 
         @Override
         public void copyTo(int srcPos, Object[] dst, int dstPos, int length) {
             if (srcPos >= firstCount) {
                 second.copyTo(srcPos - firstCount, dst, dstPos, length);
-                return;
-            }
-            final int l1 = firstCount - srcPos;
-            final int l2 = l1 > length ? length : l1;
-            first.copyTo(srcPos, dst, dstPos, l2);
-            if (length > l2) {
-                second.copyTo(0, dst, dstPos + l2, length - l2);
+            } else {
+                final int l1 = firstCount - srcPos;
+                final int l2 = l1 > length ? length : l1;
+                first.copyTo(srcPos, dst, dstPos, l2);
+                if (length > l2) {
+                    second.copyTo(0, dst, dstPos + l2, length - l2);
+                }
             }
         }
     }

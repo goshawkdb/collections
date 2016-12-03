@@ -74,11 +74,7 @@ public class BTree {
     }
 
     public Cursor<byte[], GoshawkObjRef> cursor() throws Exception {
-        final TransactionResult<Cursor<byte[], GoshawkObjRef>> r = conn.runTransaction(txn -> tree(txn).cursor());
-        if (!r.isSuccessful()) {
-            throw r.cause;
-        }
-        return r.result;
+        return conn.runTransaction(txn -> tree(txn).cursor()).getResultOrRethrow();
     }
 
     public TransactionResult<Void> forEach(BiConsumer<? super byte[], ? super GoshawkObjRef> action) {

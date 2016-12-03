@@ -12,15 +12,17 @@ public class Cursor<K, V> {
     public K getKey() {
         if (stack.isEmpty()) {
             return null;
+        } else {
+            return stack.peek().getKey();
         }
-        return stack.peek().getKey();
     }
 
     public V getValue() {
         if (stack.isEmpty()) {
             return null;
+        } else {
+            return stack.peek().getValue();
         }
-        return stack.peek().getValue();
     }
 
     public void moveRight() {
