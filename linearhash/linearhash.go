@@ -22,52 +22,45 @@ import (
 )
 
 type LHash struct {
-	// The connection used to create this LHash object. As usual with
-	// GoshawkDB, objects are scoped to connections so you should not
-	// use the same LHash object from multiple connections. You can
-	// have multiple LHash objects for the same underlying set of
-	// GoshawkDB objects.
-	Conn *client.Connection
 	// The underlying Object in GoshawkDB which holds the root data for
 	// the LHash.
-	ObjRef client.ObjectRef
+	ObjRef client.RefCap
 	root   *mp.Root
 	value  []byte
-	refs   []client.ObjectRef
+	refs   []client.RefCap
 	k0     uint64
 	k1     uint64
 }
 
 // Create a brand new empty LHash. This creates a new GoshawkDB Object
 // and initialises it for use as an LHash.
-func NewEmptyLHash(conn *client.Connection) (*LHash, error) {
-	res, _, err := conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		rootObjRef, err := txn.CreateObject([]byte{})
-		if err != nil {
+func NewEmptyLHash(txr client.Transactor) (*LHash, error) {
+	res, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if rootObjRef, err := txn.Create([]byte{}); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
 
-		lh := LHashFromObj(conn, rootObjRef)
-		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-		key := make([]byte, 16)
-		rng.Read(key)
-		lh.root = mp.NewRoot(key)
+		} else {
+			lh := LHashFromObj(rootObjRef)
+			rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+			key := make([]byte, 16)
+			rng.Read(key)
+			lh.root = mp.NewRoot(key)
 
-		refs := make([]client.ObjectRef, lh.root.BucketCount)
-		lh.refs = refs
-		for idx := range refs {
-			objRef, err := txn.CreateObject([]byte{})
-			if err != nil {
-				return nil, err
+			refs := make([]client.RefCap, lh.root.BucketCount)
+			lh.refs = refs
+			for idx := range refs {
+				if objRef, err := txn.Create(nil); err != nil || txn.RestartNeeded() {
+					return nil, err
+				} else {
+					refs[idx] = objRef
+					if err := lh.newEmptyBucket(objRef).write(txn, true); err != nil || txn.RestartNeeded() {
+						return nil, err
+					}
+				}
 			}
-			refs[idx] = objRef
-			err = lh.newEmptyBucket(objRef).write(true)
-			if err != nil {
-				return nil, err
-			}
-		}
 
-		return lh, lh.write()
+			return lh, lh.write(txn)
+		}
 	})
 	if err == nil {
 		return res.(*LHash), nil
@@ -80,29 +73,20 @@ func NewEmptyLHash(conn *client.Connection) (*LHash, error) {
 // this to regain access to an existing LHash which has already been
 // created. This function does not do any initialisation: it assumes
 // the Object passed is already initialised for LHash.
-func LHashFromObj(conn *client.Connection, objRef client.ObjectRef) *LHash {
+func LHashFromObj(objRef client.RefCap) *LHash {
 	return &LHash{
-		Conn:   conn,
 		ObjRef: objRef,
 	}
 }
 
-func (lh *LHash) populate() error {
-	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		obj, err := txn.GetObject(lh.ObjRef)
-		if err != nil {
-			return nil, err
-		}
-		lh.ObjRef = obj
-		value, refs, err := obj.ValueReferences()
-		if err != nil {
-			return nil, err
-		}
+func (lh *LHash) populate(txn *client.Transaction) error {
+	if value, refs, err := txn.Read(lh.ObjRef); err != nil || txn.RestartNeeded() {
+		return err
+	} else {
 		// fmt.Println("read ->", value)
 		rootraw := new(mp.RootRaw)
-		_, err = rootraw.UnmarshalMsg(value)
-		if err != nil {
-			return nil, err
+		if _, err := rootraw.UnmarshalMsg(value); err != nil {
+			return err
 		}
 		lh.root = rootraw.ToRoot()
 		lh.value = value
@@ -110,16 +94,8 @@ func (lh *LHash) populate() error {
 		lh.k0 = binary.LittleEndian.Uint64(lh.root.HashKey[0:8])
 		lh.k1 = binary.LittleEndian.Uint64(lh.root.HashKey[8:16])
 		// fmt.Printf("read %#v, %v %v\n", lh.root, lh.k0, lh.k1)
-		return nil, nil
-	})
-	if err != nil {
-		lh.root = nil
-		lh.value = nil
-		lh.refs = nil
-		lh.k0 = 0
-		lh.k1 = 0
+		return nil
 	}
-	return err
 }
 
 func (lh *LHash) hash(key []byte) uint64 {
@@ -130,20 +106,18 @@ func (lh *LHash) hash(key []byte) uint64 {
 // SipHash algorithm, and comparison between keys is done with
 // bytes.Equal. If no matching key is found, a nil ObjectRef is
 // returned.
-func (lh *LHash) Find(key []byte) (*client.ObjectRef, error) {
-	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		err := lh.populate()
-		if err != nil {
+func (lh *LHash) Find(txr client.Transactor, key []byte) (*client.RefCap, error) {
+	res, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if err := lh.populate(txn); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
-		bucket, err := lh.newBucket(lh.refs[lh.root.BucketIndex(lh.hash(key))])
-		if err != nil {
+		} else if bucket, err := lh.newBucket(txn, lh.refs[lh.root.BucketIndex(lh.hash(key))]); err != nil || txn.RestartNeeded() {
 			return nil, err
+		} else {
+			return bucket.find(txn, key)
 		}
-		return bucket.find(key)
 	})
 	if err == nil {
-		return res.(*client.ObjectRef), nil
+		return res.(*client.RefCap), nil
 	} else {
 		return nil, err
 	}
@@ -153,34 +127,27 @@ func (lh *LHash) Find(key []byte) (*client.ObjectRef, error) {
 // hashed using the SipHash algorithm, and comparison between keys is
 // done with bytes.Equal. If a matching key is found, the
 // corresponding value is updated.
-func (lh *LHash) Put(key []byte, value client.ObjectRef) error {
-	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		err := lh.populate()
-		if err != nil {
+func (lh *LHash) Put(txr client.Transactor, key []byte, value client.RefCap) error {
+	_, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if err := lh.populate(txn); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
-		bucket, err := lh.newBucket(lh.refs[lh.root.BucketIndex(lh.hash(key))])
-		if err != nil {
+		} else if bucket, err := lh.newBucket(txn, lh.refs[lh.root.BucketIndex(lh.hash(key))]); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
-		_, added, chainDelta, err := bucket.put(key, value)
-		if err != nil {
+		} else if _, added, chainDelta, err := bucket.put(txn, key, value); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
-		// fmt.Printf("(%v) Put %v, added:%v; chainDelta:%v\n", lh.root.Size, key, added, chainDelta)
-		if added || chainDelta != 0 {
+		} else if added || chainDelta != 0 {
 			if added {
 				lh.root.Size++
 			}
 			lh.root.BucketCount += chainDelta
 			if lh.root.NeedsSplit() {
-				err = lh.split()
-				if err != nil {
+				if err := lh.split(txn); err != nil || txn.RestartNeeded() {
 					return nil, err
 				}
 			}
-			return nil, lh.write()
+			return nil, lh.write(txn)
 		}
+		// fmt.Printf("(%v) Put %v, added:%v; chainDelta:%v\n", lh.root.Size, key, added, chainDelta)
 		return nil, nil
 	})
 	return err
@@ -189,37 +156,32 @@ func (lh *LHash) Put(key []byte, value client.ObjectRef) error {
 // Idempotently remove any matching entry from the LHash. The key is
 // hashed using the SipHash algorithm, and comparison between keys is
 // done with bytes.Equal.
-func (lh *LHash) Remove(key []byte) error {
-	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		err := lh.populate()
-		if err != nil {
+func (lh *LHash) Remove(txr client.Transactor, key []byte) error {
+	_, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if err := lh.populate(txn); err != nil || txn.RestartNeeded() {
 			return nil, err
-		}
-		idx := lh.root.BucketIndex(lh.hash(key))
-		bucket, err := lh.newBucket(lh.refs[idx])
-		if err != nil {
-			return nil, err
-		}
-		bNew, removed, chainDelta, err := bucket.remove(key)
-		if err != nil {
-			return nil, err
-		}
-		if removed || chainDelta != 0 {
-			if bNew == nil { // must keep old bucket even though it's empty
-				err = bucket.write(true)
-				if err != nil {
-					return nil, err
+		} else {
+			idx := lh.root.BucketIndex(lh.hash(key))
+			if bucket, err := lh.newBucket(txn, lh.refs[idx]); err != nil || txn.RestartNeeded() {
+				return nil, err
+			} else if bNew, removed, chainDelta, err := bucket.remove(txn, key); err != nil || txn.RestartNeeded() {
+				return nil, err
+			} else if removed || chainDelta != 0 {
+				if bNew == nil { // must keep old bucket even though it's empty
+					if err := bucket.write(txn, true); err != nil || txn.RestartNeeded() {
+						return nil, err
+					}
+				} else if bNew != bucket {
+					lh.refs[idx] = bNew.objRef
 				}
-			} else if bNew != bucket {
-				lh.refs[idx] = bNew.objRef
+				if removed {
+					lh.root.Size--
+				}
+				lh.root.BucketCount += chainDelta
+				return nil, lh.write(txn)
 			}
-			if removed {
-				lh.root.Size--
-			}
-			lh.root.BucketCount += chainDelta
-			return nil, lh.write()
+			return nil, nil
 		}
-		return nil, nil
 	})
 	return err
 }
@@ -231,19 +193,15 @@ func (lh *LHash) Remove(key []byte) error {
 // entry. To detect this, call ForEach from within a transaction of
 // your own. Iteration will stop as soon as the callback returns a
 // non-nil error, which will also abort the transaction.
-func (lh *LHash) ForEach(f func([]byte, client.ObjectRef) error) error {
-	_, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		err := lh.populate()
-		if err != nil {
+func (lh *LHash) ForEach(txr client.Transactor, f func([]byte, client.RefCap) error) error {
+	_, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if err := lh.populate(txn); err != nil || txn.RestartNeeded() {
 			return nil, err
 		}
 		for _, objRef := range lh.refs {
-			bucket, err := lh.newBucket(objRef)
-			if err != nil {
+			if bucket, err := lh.newBucket(txn, objRef); err != nil || txn.RestartNeeded() {
 				return nil, err
-			}
-			err = bucket.forEach(f)
-			if err != nil {
+			} else if err := bucket.forEach(txn, f); err != nil || txn.RestartNeeded() {
 				return nil, err
 			}
 		}
@@ -253,10 +211,9 @@ func (lh *LHash) ForEach(f func([]byte, client.ObjectRef) error) error {
 }
 
 // Returns the number of entries in the LHash.
-func (lh *LHash) Size() (int64, error) {
-	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		err := lh.populate()
-		if err != nil {
+func (lh *LHash) Size(txr client.Transactor) (int64, error) {
+	res, err := txr.Transact(func(txn *client.Transaction) (interface{}, error) {
+		if err := lh.populate(txn); err != nil || txn.RestartNeeded() {
 			return nil, err
 		}
 		return lh.root.Size, nil
@@ -268,167 +225,145 @@ func (lh *LHash) Size() (int64, error) {
 	}
 }
 
-func (lh *LHash) split() error {
+func (lh *LHash) split(txn *client.Transaction) error {
 	sOld := lh.root.SplitIndex
-	b, err := lh.newBucket(lh.refs[sOld])
-	if err != nil {
+	if b, err := lh.newBucket(txn, lh.refs[sOld]); err != nil || txn.RestartNeeded() {
 		return err
-	}
-	res, _, err := lh.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		return txn.CreateObject([]byte{})
-	})
-	if err != nil {
+	} else if objRef, err := txn.Create(nil); err != nil || txn.RestartNeeded() {
 		return err
-	}
-	bNew := lh.newEmptyBucket(res.(client.ObjectRef))
-	lh.refs = append(lh.refs, bNew.objRef)
+	} else {
+		bNew := lh.newEmptyBucket(objRef)
+		lh.refs = append(lh.refs, bNew.objRef)
 
-	lh.root.BucketCount++
-	lh.root.SplitIndex++
-	if 2*lh.root.SplitIndex == uint64(len(lh.refs)) {
-		// we've split everything
-		lh.root.SplitIndex = 0
-		lh.root.MaskLow = lh.root.MaskHigh
-		lh.root.MaskHigh = lh.root.MaskHigh*2 + 1
-	}
-
-	var bPrev, bNext *bucket
-	for ; b != nil; b = bNext {
-		bNext, err = b.next()
-		if err != nil {
-			return err
+		lh.root.BucketCount++
+		lh.root.SplitIndex++
+		if 2*lh.root.SplitIndex == uint64(len(lh.refs)) {
+			// we've split everything
+			lh.root.SplitIndex = 0
+			lh.root.MaskLow = lh.root.MaskHigh
+			lh.root.MaskHigh = lh.root.MaskHigh*2 + 1
 		}
-		emptied := true
-		for idx, k := range ([][]byte)(*b.entries) {
-			if b.isSlotEmpty(idx) {
-				continue
-			} else if lh.root.BucketIndex(lh.hash(k)) == sOld {
-				emptied = false
+
+		var bPrev, bNext *bucket
+		for ; b != nil; b = bNext {
+			if bNext, err = b.next(txn); err != nil || txn.RestartNeeded() {
+				return err
 			} else {
-				_, _, chainDelta, err := bNew.put(k, b.refs[idx+1])
-				if err != nil {
-					return err
-				}
-				lh.root.BucketCount += chainDelta
-				([][]byte)(*b.entries)[idx] = nil
-				b.refs[idx+1] = b.objRef
-			}
-		}
-		if emptied {
-			if bNext == nil {
-				if bPrev == nil {
-					// we have to keep b here, and there's no next,
-					// so we have to write out b.
-					b.tidyRefTail()
-					err = b.write(true)
-					if err != nil {
+				emptied := true
+				for idx, k := range ([][]byte)(*b.entries) {
+					if b.isSlotEmpty(idx) {
+						continue
+					} else if lh.root.BucketIndex(lh.hash(k)) == sOld {
+						emptied = false
+					} else if _, _, chainDelta, err := bNew.put(txn, k, b.refs[idx+1]); err != nil || txn.RestartNeeded() {
 						return err
+					} else {
+						lh.root.BucketCount += chainDelta
+						([][]byte)(*b.entries)[idx] = nil
+						b.refs[idx+1] = b.objRef
+					}
+				}
+
+				if emptied {
+					if bNext == nil {
+						if bPrev == nil {
+							// we have to keep b here, and there's no next,
+							// so we have to write out b.
+							b.tidyRefTail()
+							if err := b.write(txn, true); err != nil || txn.RestartNeeded() {
+								return err
+							}
+						} else {
+							// we've detached b here, so will just wait to
+							// write out bPrev
+							lh.root.BucketCount--
+							bPrev.refs[0] = bPrev.objRef
+						}
+					} else { // there is a next
+						lh.root.BucketCount--
+						if bPrev == nil {
+							lh.refs[sOld] = bNext.objRef
+						} else {
+							bPrev.refs[0] = bNext.objRef
+						}
 					}
 				} else {
-					// we've detached b here, so will just wait to
-					// write out bPrev
-					lh.root.BucketCount--
-					bPrev.refs[0] = bPrev.objRef
-				}
-			} else { // there is a next
-				lh.root.BucketCount--
-				if bPrev == nil {
-					lh.refs[sOld] = bNext.objRef
-				} else {
-					bPrev.refs[0] = bNext.objRef
+					b.tidyRefTail()
+					if bPrev != nil {
+						if err := bPrev.write(txn, true); err != nil || txn.RestartNeeded() {
+							return err
+						}
+					}
+					bPrev = b
 				}
 			}
-		} else {
-			b.tidyRefTail()
-			if bPrev != nil {
-				err = bPrev.write(true)
-				if err != nil {
-					return err
-				}
+		}
+		if bPrev != nil {
+			if err := bPrev.write(txn, true); err != nil || txn.RestartNeeded() {
+				return err
 			}
-			bPrev = b
 		}
+		return bNew.write(txn, true)
 	}
-	if bPrev != nil {
-		err = bPrev.write(true)
-		if err != nil {
-			return err
-		}
-	}
-	return bNew.write(true)
 }
 
-func (lh *LHash) write() (err error) {
-	lh.value, err = lh.root.UpdateRaw().MarshalMsg(lh.value[:0])
-	if err != nil {
-		return
+func (lh *LHash) write(txn *client.Transaction) (err error) {
+	if lh.value, err = lh.root.UpdateRaw().MarshalMsg(lh.value[:0]); err != nil {
+		return err
+	} else {
+		// fmt.Println("write ->", lh.value)
+		// fmt.Printf("write %#v, %v %v\n", lh.root, lh.k0, lh.k1)
+		return txn.Write(lh.ObjRef, lh.value, lh.refs...)
 	}
-	// fmt.Println("write ->", lh.value)
-	// fmt.Printf("write %#v, %v %v\n", lh.root, lh.k0, lh.k1)
-	return lh.ObjRef.Set(lh.value, lh.refs...)
 }
 
 type bucket struct {
 	*LHash
-	objRef  client.ObjectRef
+	objRef  client.RefCap
 	entries *mp.Bucket
 	value   []byte
-	refs    []client.ObjectRef
+	refs    []client.RefCap
 }
 
-func (lh *LHash) newBucket(objRef client.ObjectRef) (*bucket, error) {
+func (lh *LHash) newBucket(txn *client.Transaction, objRef client.RefCap) (*bucket, error) {
 	b := &bucket{
 		LHash:  lh,
 		objRef: objRef,
 	}
-	if err := b.populate(); err == nil {
+	if err := b.populate(txn); err == nil {
 		return b, nil
 	} else {
 		return nil, err
 	}
 }
 
-func (lh *LHash) newEmptyBucket(objRef client.ObjectRef) *bucket {
+func (lh *LHash) newEmptyBucket(objRef client.RefCap) *bucket {
 	nextKeys := make([][]byte, mp.BucketCapacity)
 	return &bucket{
 		LHash:   lh,
 		objRef:  objRef,
 		entries: (*mp.Bucket)(&nextKeys),
 		value:   nil,
-		refs:    []client.ObjectRef{objRef},
+		refs:    []client.RefCap{objRef},
 	}
 }
 
-func (b *bucket) populate() error {
-	_, _, err := b.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-		obj, err := txn.GetObject(b.objRef)
-		if err != nil {
-			return nil, err
-		}
-		b.objRef = obj
-		value, refs, err := obj.ValueReferences()
-		if err != nil {
-			return nil, err
-		}
+func (b *bucket) populate(txn *client.Transaction) error {
+	if value, refs, err := txn.Read(b.objRef); err != nil || txn.RestartNeeded() {
+		return err
+	} else {
 		entries := new(mp.Bucket)
-		_, err = entries.UnmarshalMsg(value)
-		if err != nil {
-			return nil, err
+		if _, err := entries.UnmarshalMsg(value); err != nil {
+			return err
 		}
 		b.value = value
 		b.entries = entries
 		b.refs = refs
-		return nil, nil
-	})
-	if err != nil {
-		b.entries = nil
-		b.value = nil
-		b.refs = nil
+		return nil
 	}
-	return err
 }
 
-func (b *bucket) find(key []byte) (*client.ObjectRef, error) {
+func (b *bucket) find(txn *client.Transaction, key []byte) (*client.RefCap, error) {
 	for idx, k := range ([][]byte)(*b.entries) {
 		if b.isSlotEmpty(idx) {
 			continue
@@ -437,16 +372,16 @@ func (b *bucket) find(key []byte) (*client.ObjectRef, error) {
 		}
 	}
 
-	if bNext, err := b.next(); err != nil {
+	if bNext, err := b.next(txn); err != nil {
 		return nil, err
 	} else if bNext != nil {
-		return bNext.find(key)
+		return bNext.find(txn, key)
 	} else {
 		return nil, nil
 	}
 }
 
-func (b *bucket) put(key []byte, value client.ObjectRef) (bNew *bucket, added bool, chainDelta int64, err error) {
+func (b *bucket) put(txn *client.Transaction, key []byte, value client.RefCap) (bNew *bucket, added bool, chainDelta int64, err error) {
 	slot := -1
 	for idx, k := range ([][]byte)(*b.entries) {
 		if b.isSlotEmpty(idx) {
@@ -459,24 +394,23 @@ func (b *bucket) put(key []byte, value client.ObjectRef) (bNew *bucket, added bo
 		} else if bytes.Equal(key, k) {
 			b.refs[idx+1] = value
 			// we didn't change any keys so don't need to serialize
-			err = b.write(false)
-			if err == nil {
-				return b, false, 0, nil
+			if err := b.write(txn, false); err != nil || txn.RestartNeeded() {
+				return nil, false, 0, err
 			} else {
-				return
+				return b, false, 0, nil
 			}
 		}
 	}
 
 	if slot == -1 {
-		return b.putInNext(key, value)
+		return b.putInNext(txn, key, value)
 
 	} else {
-		return b.putInSlot(key, value, slot)
+		return b.putInSlot(txn, key, value, slot)
 	}
 }
 
-func (b *bucket) putInSlot(key []byte, value client.ObjectRef, slot int) (bNew *bucket, added bool, chainDelta int64, err error) {
+func (b *bucket) putInSlot(txn *client.Transaction, key []byte, value client.RefCap, slot int) (bNew *bucket, added bool, chainDelta int64, err error) {
 	(*b.entries)[slot] = key
 	slot++
 	if slot == len(b.refs) {
@@ -485,104 +419,89 @@ func (b *bucket) putInSlot(key []byte, value client.ObjectRef, slot int) (bNew *
 		b.refs[slot] = value
 	}
 
-	var next *bucket
-	if next, err = b.next(); err != nil {
-		return
+	if next, err := b.next(txn); err != nil || txn.RestartNeeded() {
+		return nil, false, 0, err
 
 	} else if next != nil {
-		removed := false
-		next, removed, chainDelta, err = next.remove(key)
-		if err != nil {
-			return
-		}
-		if next == nil {
+		next, removed, chainDelta, err := next.remove(txn, key)
+		if err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
+		} else if next == nil {
 			b.refs[0] = b.objRef
 		} else {
 			b.refs[0] = next.objRef
 		}
-		err = b.write(true)
-		if err != nil {
-			return
-		}
-		return b, !removed, chainDelta, nil
 
-	} else {
-		err = b.write(true)
-		if err != nil {
-			return
+		if err := b.write(txn, true); err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
+		} else {
+			return b, !removed, chainDelta, nil
 		}
-		return b, true, 0, nil
+	} else {
+		if err := b.write(txn, true); err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
+		} else {
+			return b, true, 0, nil
+		}
 	}
 }
 
-func (b *bucket) putInNext(key []byte, value client.ObjectRef) (bNew *bucket, added bool, chainDelta int64, err error) {
-	var next *bucket
-	if next, err = b.next(); err != nil {
-		return
+func (b *bucket) putInNext(txn *client.Transaction, key []byte, value client.RefCap) (bNew *bucket, added bool, chainDelta int64, err error) {
+	if next, err := b.next(txn); err != nil || txn.RestartNeeded() {
+		return nil, false, 0, err
 
 	} else if next != nil {
 		// next cannot change here
-		_, added, chainDelta, err = next.put(key, value)
-		if err != nil {
-			return
+		if _, added, chainDelta, err := next.put(txn, key, value); err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
+		} else {
+			return b, added, chainDelta, nil
 		}
-		return b, added, chainDelta, nil
 
 	} else {
-		var res interface{}
-		res, _, err = b.Conn.RunTransaction(func(txn *client.Txn) (interface{}, error) {
-			return txn.CreateObject([]byte{})
-		})
-		if err != nil {
-			return
-		}
-		bNext := b.newEmptyBucket(res.(client.ObjectRef))
-		bNext, added, chainDelta, err = bNext.put(key, value)
-		if err != nil {
-			return
-		}
-		b.refs[0] = bNext.objRef
-		// we didn't change any keys so don't need to serialize
-		err = b.write(false)
-		if err == nil {
-			return b, added, chainDelta + 1, nil
+		if objRef, err := txn.Create(nil); err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
 		} else {
-			return
+			bNext := b.newEmptyBucket(objRef)
+			if bNext, added, chainDelta, err := bNext.put(txn, key, value); err != nil || txn.RestartNeeded() {
+				return nil, false, 0, err
+			} else {
+				b.refs[0] = bNext.objRef
+				// we didn't change any keys so don't need to serialize
+				if err := b.write(txn, false); err != nil || txn.RestartNeeded() {
+					return nil, false, 0, err
+				} else {
+					return b, added, chainDelta + 1, nil
+				}
+			}
 		}
 	}
 }
 
-func (b *bucket) remove(key []byte) (bNew *bucket, removed bool, chainDelta int64, err error) {
+func (b *bucket) remove(txn *client.Transaction, key []byte) (bNew *bucket, removed bool, chainDelta int64, err error) {
 	slot := -1
 	for idx, k := range ([][]byte)(*b.entries) {
-		if b.isSlotEmpty(idx) {
-			continue
-		} else if bytes.Equal(key, k) {
+		if !b.isSlotEmpty(idx) && bytes.Equal(key, k) {
 			slot = idx
 			break
 		}
 	}
 
 	if slot == -1 {
-		var next *bucket
-		if next, err = b.next(); err != nil {
-			return
+		if next, err := b.next(txn); err != nil || txn.RestartNeeded() {
+			return nil, false, 0, err
 		} else if next != nil {
-			next, removed, chainDelta, err = next.remove(key)
-			if err != nil {
-				return
-			}
-			if next == nil {
+			if next, removed, chainDelta, err := next.remove(txn, key); err != nil || txn.RestartNeeded() {
+				return nil, false, 0, err
+			} else if next == nil {
 				b.refs[0] = b.objRef
-				err = b.write(false)
-			} else if !b.refs[0].ReferencesSameAs(next.objRef) { // changed!
+				return b, removed, chainDelta, b.write(txn, false)
+			} else if !b.refs[0].SameReferent(next.objRef) { // changed!
 				b.refs[0] = next.objRef
-				err = b.write(false)
+				return b, removed, chainDelta, b.write(txn, false)
+			} else {
+				return b, removed, chainDelta, nil
 			}
-			if err != nil {
-				return
-			}
-			return b, removed, chainDelta, nil
 		} else {
 			return b, false, 0, nil
 		}
@@ -593,25 +512,22 @@ func (b *bucket) remove(key []byte) (bNew *bucket, removed bool, chainDelta int6
 		b.refs[slot] = b.objRef
 		b.tidyRefTail()
 		if len(b.refs) == 1 { // we're empty; don't need to write us, just disconnect us.
-			var next *bucket
-			next, err = b.next()
-			if err == nil {
-				return next, true, -1, nil
+			if next, err := b.next(txn); err != nil || txn.RestartNeeded() {
+				return nil, false, 0, err
 			} else {
-				return
+				return next, true, -1, nil
 			}
 		} else {
-			err = b.write(true)
-			if err == nil {
-				return b, true, 0, nil
+			if err := b.write(txn, true); err != nil || txn.RestartNeeded() {
+				return nil, false, 0, err
 			} else {
-				return
+				return b, true, 0, nil
 			}
 		}
 	}
 }
 
-func (b *bucket) forEach(f func([]byte, client.ObjectRef) error) error {
+func (b *bucket) forEach(txn *client.Transaction, f func([]byte, client.RefCap) error) error {
 	for idx, k := range ([][]byte)(*b.entries) {
 		if b.isSlotEmpty(idx) {
 			continue
@@ -620,10 +536,10 @@ func (b *bucket) forEach(f func([]byte, client.ObjectRef) error) error {
 			return err
 		}
 	}
-	if bNext, err := b.next(); err != nil {
+	if bNext, err := b.next(txn); err != nil || txn.RestartNeeded() {
 		return err
 	} else if bNext != nil {
-		return bNext.forEach(f)
+		return bNext.forEach(txn, f)
 	} else {
 		return nil
 	}
@@ -631,29 +547,28 @@ func (b *bucket) forEach(f func([]byte, client.ObjectRef) error) error {
 
 func (b *bucket) tidyRefTail() {
 	idx := len(b.refs) - 1
-	for ; idx > 0 && b.objRef.ReferencesSameAs(b.refs[idx]); idx-- {
+	for ; idx > 0 && b.objRef.SameReferent(b.refs[idx]); idx-- {
 	}
 	b.refs = b.refs[:idx+1]
 }
 
-func (b *bucket) write(updateEntries bool) (err error) {
+func (b *bucket) write(txn *client.Transaction, updateEntries bool) (err error) {
 	if updateEntries {
-		b.value, err = b.entries.MarshalMsg(b.value[:0])
-		if err != nil {
+		if b.value, err = b.entries.MarshalMsg(b.value[:0]); err != nil {
 			return err
 		}
 	}
-	return b.objRef.Set(b.value, b.refs...)
+	return txn.Write(b.objRef, b.value, b.refs...)
 }
 
-func (b *bucket) next() (*bucket, error) {
-	if b.refs[0].ReferencesSameAs(b.objRef) {
+func (b *bucket) next(txn *client.Transaction) (*bucket, error) {
+	if b.refs[0].SameReferent(b.objRef) {
 		return nil, nil
 	} else {
-		return b.newBucket(b.refs[0])
+		return b.newBucket(txn, b.refs[0])
 	}
 }
 
 func (b *bucket) isSlotEmpty(idx int) bool {
-	return idx+1 >= len(b.refs) || b.refs[idx+1].ReferencesSameAs(b.objRef)
+	return idx+1 >= len(b.refs) || b.refs[idx+1].SameReferent(b.objRef)
 }
