@@ -330,10 +330,10 @@ func (lh *LHash) newBucket(txn *client.Transaction, objRef client.RefCap) (*buck
 		LHash:  lh,
 		objRef: objRef,
 	}
-	if err := b.populate(txn); err == nil {
-		return b, nil
-	} else {
+	if err := b.populate(txn); err != nil || txn.RestartNeeded() {
 		return nil, err
+	} else {
+		return b, nil
 	}
 }
 
@@ -374,7 +374,7 @@ func (b *bucket) find(txn *client.Transaction, key []byte) (*client.RefCap, erro
 
 	if bNext, err := b.next(txn); err != nil {
 		return nil, err
-	} else if bNext != nil {
+	} else if bNext != nil || txn.RestartNeeded() {
 		return bNext.find(txn, key)
 	} else {
 		return nil, nil
