@@ -16,8 +16,8 @@ import java.util.Map;
 import java.util.Set;
 
 import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
-import io.goshawkdb.client.TransactionResult;
+import io.goshawkdb.client.RefCap;
+import io.goshawkdb.client.Transactor;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.test.TestBase;
 
@@ -31,11 +31,11 @@ public class CreateTest extends TestBase {
     }
 
     private LinearHash create(final Connection c) throws Exception {
-        return LinearHash.createEmpty(c).getResultOrRethrow();
+        return LinearHash.createEmpty(c);
     }
 
-    private void assertSize(final LinearHash lh, final Integer expected) throws Exception {
-        assertEquals(expected, lh.size().getResultOrAbort());
+    private void assertSize(final Transactor txr, final LinearHash lh, final int expected) throws Exception {
+        assertEquals(expected, lh.size(txr));
     }
 
     @Test
@@ -43,7 +43,7 @@ public class CreateTest extends TestBase {
         try {
             final Connection c = createConnections(1)[0];
             final LinearHash lh = create(c);
-            assertSize(lh, 0);
+            assertSize(c, lh, 0);
         } finally {
             shutdown();
         }
@@ -57,47 +57,51 @@ public class CreateTest extends TestBase {
 
             int objCount = 1024;
             // create objs
-            TransactionResult<Map<String, GoshawkObjRef>> r0 = c.runTransaction(txn -> {
-                final Map<String, GoshawkObjRef> m = new HashMap<String, GoshawkObjRef>();
+            final Map<String, RefCap> m = c.transact(txn -> {
+                final Map<String, RefCap> n = new HashMap<String, RefCap>();
                 for (int idx = 0; idx < objCount; idx++) {
                     final String str = "" + idx;
-                    final GoshawkObjRef objRef = txn.createObject(ByteBuffer.wrap(str.getBytes()));
-                    m.put(str, objRef);
+                    final RefCap objRef = txn.create(ByteBuffer.wrap(str.getBytes()));
+                    if (txn.restartNeeded()) {
+                        return null;
+                    }
+                    n.put(str, objRef);
                 }
-                return m;
-            });
-            final Map<String, GoshawkObjRef> m = r0.getResultOrRethrow();
-            c.runTransaction(txn -> {
+                return n;
+            }).getResultOrRethrow();
+            c.transact(txn -> {
                 m.forEach((key, value) -> {
-                    value = txn.getObject(value);
-                    lh.put(key.getBytes(), value).getResultOrAbort();
+                    lh.put(txn, key.getBytes(), value);
+                    if (txn.restartNeeded()) {
+                        return;
+                    }
                 });
                 return null;
             }).getResultOrRethrow();
-            assertSize(lh, objCount);
+            assertSize(c, lh, objCount);
 
             m.forEach((key, value) -> {
-                final GoshawkObjRef objRefFound = lh.find(key.getBytes()).getResultOrAbort();
+                final RefCap objRefFound = lh.find(c, key.getBytes());
                 if (objRefFound == null) {
                     fail("Failed to find entry for " + key);
-                } else if (!objRefFound.referencesSameAs(value)) {
+                } else if (!objRefFound.sameReferent(value)) {
                     fail("Entry for " + key + " has value in " + objRefFound + " instead of " + value);
                 }
             });
-            assertSize(lh, objCount);
+            assertSize(c, lh, objCount);
 
-            lh.conn.runTransaction(txn -> {
+            c.transact(txn -> {
                 final Set<String> covered = new HashSet<String>();
-                lh.forEach((key, value) -> {
+                lh.forEach(txn, (key, value) -> {
                     final String str = new String(key);
                     if (covered.contains(str)) {
                         fail("forEach yielded key twice! " + str);
                     }
                     covered.add(str);
-                    final GoshawkObjRef ref = m.get(str);
+                    final RefCap ref = m.get(str);
                     if (ref == null) {
                         fail("forEach yielded unknown key: " + str);
-                    } else if (!ref.referencesSameAs(value)) {
+                    } else if (!ref.sameReferent(value)) {
                         fail("forEach yielded unexpected value for key " + str + " (expected " + ref + "; actual " + value + ")");
                     }
                 });

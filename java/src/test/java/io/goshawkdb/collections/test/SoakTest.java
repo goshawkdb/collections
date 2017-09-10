@@ -15,7 +15,8 @@ import java.util.Map;
 import java.util.Random;
 
 import io.goshawkdb.client.Connection;
-import io.goshawkdb.client.GoshawkObjRef;
+import io.goshawkdb.client.RefCap;
+import io.goshawkdb.client.ValueRefs;
 import io.goshawkdb.collections.linearhash.LinearHash;
 import io.goshawkdb.test.TestBase;
 
@@ -29,7 +30,7 @@ public class SoakTest extends TestBase {
     public void soak() throws Exception {
         try {
             final Connection c = createConnections(1)[0];
-            LinearHash lh = LinearHash.createEmpty(c).getResultOrRethrow();
+            LinearHash lh = LinearHash.createEmpty(c);
 
             final long seed = System.nanoTime();
             System.out.println("Seed: " + seed);
@@ -37,7 +38,7 @@ public class SoakTest extends TestBase {
             // we use contents to mirror the state of the LHash
             final Map<String, String> contents = new HashMap<String, String>();
 
-            for (int i = 4096; i > 0; i--) {
+            for (int i = 16384; i > 0; i--) {
                 final int contentsSize = contents.size();
                 // we bias creation of new keys by 999 with 1 more for reset
                 final int op = rng.nextInt((3 * contentsSize) + 1000) - 1000;
@@ -49,16 +50,19 @@ public class SoakTest extends TestBase {
                 }
 
                 if (op == -1) { // reset
-                    lh = LinearHash.createEmpty(c).getResultOrRethrow();
+                    lh = LinearHash.createEmpty(c);
                     contents.clear();
 
                 } else if (op < -1) { // add new key
                     final String key = String.valueOf(contentsSize);
                     final String value = "Hello" + i + "-" + key;
                     final LinearHash finalLh = lh;
-                    lh.conn.runTransaction(txn -> {
-                        GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(value.getBytes()));
-                        finalLh.put(key.getBytes(), valueObj).getResultOrAbort();
+                    c.transact(txn -> {
+                        RefCap valueObj = txn.create(ByteBuffer.wrap(value.getBytes()));
+                        if (txn.restartNeeded()) {
+                            return null;
+                        }
+                        finalLh.put(txn, key.getBytes(), valueObj);
                         return null;
                     }).getResultOrRethrow();
                     contents.put(key, value);
@@ -70,12 +74,18 @@ public class SoakTest extends TestBase {
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
                             final LinearHash finalLh = lh;
-                            final String result = lh.conn.runTransaction(txn -> {
-                                final GoshawkObjRef valueObj = finalLh.find(key.getBytes()).getResultOrAbort();
-                                if (valueObj == null) {
+                            final String result = c.transact(txn -> {
+                                final RefCap objRef = finalLh.find(txn, key.getBytes());
+                                if (txn.restartNeeded()) {
+                                    return null;
+                                } else if (objRef == null) {
                                     return null;
                                 } else {
-                                    final ByteBuffer bb = valueObj.getValue();
+                                    final ValueRefs objVR = txn.read(objRef);
+                                    if (txn.restartNeeded()) {
+                                        return null;
+                                    }
+                                    final ByteBuffer bb = objVR.value;
                                     return byteBufferToString(bb, bb.limit());
                                 }
                             }).getResultOrRethrow();
@@ -91,7 +101,7 @@ public class SoakTest extends TestBase {
                             final String key = String.valueOf(opArg);
                             final String value = contents.get(key);
                             final boolean inContents = !"".equals(value);
-                            lh.remove(key.getBytes());
+                            lh.remove(c, key.getBytes());
                             if (inContents) {
                                 contents.put(key, "");
                             }
@@ -108,9 +118,12 @@ public class SoakTest extends TestBase {
                             }
                             final String finalValue = value;
                             final LinearHash finalLh = lh;
-                            lh.conn.runTransaction(txn -> {
-                                GoshawkObjRef valueObj = txn.createObject(ByteBuffer.wrap(finalValue.getBytes()));
-                                finalLh.put(key.getBytes(), valueObj).getResultOrAbort();
+                            c.transact(txn -> {
+                                RefCap valueObj = txn.create(ByteBuffer.wrap(finalValue.getBytes()));
+                                if (txn.restartNeeded()) {
+                                    return null;
+                                }
+                                finalLh.put(txn, key.getBytes(), valueObj);
                                 return null;
                             }).getResultOrRethrow();
                             break;
