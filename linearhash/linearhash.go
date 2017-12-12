@@ -252,6 +252,16 @@ import (
 // and the MaskHigh to 15 (i.e. least 4 bits). Now we start again, but
 // with 8 original buckets. And so it goes on.
 //
+// From here, the generalisation may be clear: if we bitwise-AND the
+// hashcode with the MaskLow and the result is the indicated bucket is
+// to the left of the SplitIndex then we know we're pointing at a
+// bucket that has already been split. So therefore we need to take
+// another bit from the hashcode - i.e. use the MaskHigh, in order to
+// correctly determine the bucket. But, if the bitwise-AND of hashcode
+// with the MaskLow points either at or to the right of the SplitIndex
+// then we know that bucket hasn't been split, so we're clear to
+// proceed.
+//
 // What happens if the utilisation factor goes too low? Do we try to
 // remove and "un-split" buckets? Nope. There's no such thing. I'm
 // sure it's possible, but I've never seen any papers claiming that
