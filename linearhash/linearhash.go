@@ -21,6 +21,238 @@ import (
 	"time"
 )
 
+// Implementation notes
+//
+// The Linear Hash is a relatively old data structure and many of the
+// original papers concern themselves with optimising layout on disk
+// for disk seeks, and so are not the ideal documentation. Some of the
+// other online resources for linear hashes are simply awful. Hence
+// these notes.
+//
+// As the name suggests, we need a hash function with some good
+// properties: uniform random distribution of keys to hashcodes, and
+// ideally immune to some of the hash poisoning attacks that have been
+// seen in the past few years. Siphash seems to be the default choice
+// these days and so we go with that. However, Siphash is pretty
+// interesting in that it is parameterised by a 128-bit key. This key
+// must be stored with the linear hash (lhash from here on) data
+// structure so that it is consistently used for all hashing
+// operations. So for a new lhash, we just create a [16]byte array and
+// fill it with random data (see NewEmptyLHash below). The actual
+// SipHash API in Go wants two 64-bit uints, so we are just a little
+// careful when loading out of GoshawkDB to get that all set up
+// correctly (endian concerns etc (see LHash.populate below)).
+//
+// So what is the siphash used for? The siphash hashes the key that we
+// either wish to search for, or insert in the data structure. The
+// result of the siphash (the hashcode) indicates which bucket we
+// start searching in. What what what?
+//
+// Some definitions:
+//
+// In this implementation, we declare that a bucket can contain no
+// more than 64 keys (see msgpack.BucketCapacity). A key is just a
+// byte-array (of unlimited length). The bucket is just a msgpack
+// array of keys. The utilisation factor is 0.75 (see
+// msgpack.UtilizationFactor).
+//
+// Initial state:
+//
+// fig 1.         [A] [B]
+//
+// The initial state of an lhash consists of two buckets, shown above:
+// A and B. When we are given a key, we need to decide which bucket we
+// think the key is in. So, we hash key, and then in this simple
+// state, we just look at the least significant bit of the
+// hashcode. If it's a 0, then we work in bucket A, if it's a 1 then
+// bucket B. If you look at the Root.BucketIndex function then the
+// code there is more complex, but, also look at NewRoot where we
+// learn the initial SplitIndex is 0, so we are always taking the
+// first branch of the conditional in BucketIndex at this point, and
+// so we are just doing the hashcode bitwise-AND with MaskLow, which
+// starts life as 1. So we really are looking at the least significant
+// bit only.
+//
+// When we insert (Put) a key-value pair, we first check the entire
+// bucket to see if we can find the key already in there. If we do,
+// then we just need to update the value. So if the key is found in
+// slot i within bucket A then the value is stored in the i+1
+// reference of bucket A. This is because the 0th reference is special
+// - this will be explained shortly. If, when we do a Put, we can't
+// find the key, we add the key in the first empty slot within the
+// bucket, and link to the value as described. Keys are not ordered
+// within buckets.
+//
+// As we all know, life can be very unfair. So we can imagine a
+// situation where one bucket is filled up whilst the other is left
+// completely empty. For example, bucket B may be totally filled. We
+// now want to do a further Put, and as luck would have it, our
+// BucketIndex function again indicates we want bucket B. So we create
+// a chained bucket:
+//
+// fig 2.         [A] [B]
+//                     |
+//                    [C]
+//
+// Bucket C is chained from bucket B. The special 0th reference of B
+// points to C. The special 0th reference of C points to C. So: if a
+// bucket X has another bucket chained to it Y then the 0th reference
+// of X = Y. Otherwise, the 0th reference of X points to X. Thus when
+// traversing a chain, we can detect when we get to the end (nil
+// references are not supported in GoshawkDB, hence this
+// construction).
+//
+// So in this scenario, the only thing that has changed is that now
+// once we've done searching B, we have to continue on and search C
+// too. This introduces two further complexities:
+//
+// 1a. When removing items, it's possible that we remove everything
+// from C. This means we have to correct the 0th reference from B to
+// point back at itself and fully detach C. (figure 1)
+//
+// 1b. The opposite can also happen: when removing items, it's
+// possible that we empty out B, but we need to keep C. In this case,
+// B is removed from the chain (and the lhash) and C now takes the
+// place of B. (figure 3)
+//
+// fig 3.         [A] [C]
+//
+// 2. When inserting an item into the chain from B, we may find a
+// suitable empty slot in B, which we then use. But it's possible that
+// this key already exists further down the chain, so we then have to
+// search C to attempt to remove that key. This can then cause C to
+// now become empty, and so we're in the same situation as case 1a
+// above.
+//
+// A chain can be any length >= 1 and so we have to cope with removing
+// buckets from the start, the middle and the end of a chain. A new
+// bucket is always added to the end of a chain, never the start or
+// middle. If the chain is completely empty, it is a chain of length 1
+// and that first bucket in the chain has no entries.
+//
+// For performance reasons, it's a good idea to avoid long chains
+// which are partially full. Hence why an insert will always use the
+// first available slot in the first non-full bucket (with the
+// exception that that bucket already contains the key). However, we
+// do not do any further compaction of chains.
+//
+// A bucket starts off with zero keys in it. It does not start off
+// with 64 empty keys in it. So, if nothing is removed from a bucket,
+// the bucket will grow in size up to the limit of 64 keys, and 65
+// references. When a key is removed from a bucket, this key may not
+// be the last item in the bucket, so we have to have a way to
+// indicate the key is absent. To indicate that slot i is empty, the
+// i+1 reference will point to the bucket itself. See
+// bucket.isSlotEmpty.
+//
+// One final complexity is that we try to reduce the size of a bucket
+// where it is simple to do so. So if we detect we've removed the last
+// key in a bucket, we will then reduce the size of the bucket back to
+// the last non-empty slot. Again, we don't do any rewriting or
+// compaction, we just do this one simple thing.
+//
+// Chains are the most complex part, but not the key part of a linear
+// hash. So with those explained, there's not much left.
+//
+// Splitting. When the utilization of the lhash is > the
+// UtilizationFactor, we split a bucket. The utilization factor is a
+// measure of how full the buckets are. It is the Size /
+// (BucketCapacity*BucketCount), where BucketCount includes all
+// buckets in all chains, and Size is the total number of keys in the
+// lhash. In this implementation, UtilizationFactor is 0.75. A higher
+// value will make the buckets more full but will produce longer
+// chains; a lower value will reduce the number of chains, but more
+// splitting will happen. So it's a tradeoff. 0.75 is about right.
+// Going back to figures 1 and 2, with a UtilizationFactor of 0.75,
+// you can see how if bucket B is full and A is empty, then the
+// utilization is 0.5, so rather than splitting, we will have to
+// create bucket C and start a chain from B.
+//
+// So what is splitting? Let's say we're back in figure 1. But this
+// time, both buckets A and B are filled equally until both have 48
+// entries in (utilisation is 0.75). Now we want to do a further
+// put. Rather than creating a chain, we "split" the bucket pointed to
+// by the SplitIndex. Initially, the SplitIndex is 0, so we split the
+// 0th bucket (A) and end up with figure 4.
+//
+//                     S
+// fig 4.         [A] [B] [C]
+//
+// The split index (S) has been incremented to 1 (so is now indicating
+// bucket B is the next to be split). Now if we return to the
+// BucketIndex function we have to consider both branches. The MaskLow
+// and MaskHigh have not been changed. So, if the least significant
+// bit of the hashcode of our key is >= the new SplitIndex (i.e. >= 1)
+// then we we directly use the least significant bit. Otherwise, we
+// now have to use the hashcode bitwise AND with MaskHigh, which
+// starts off as 3. So we can draw up a truth table:
+//
+// hash code | LSB >= 1? | bucket index | bucket
+//     ...00 | false     | 00           | A
+//     ...01 | true      |  1           | B
+//     ...10 | false     | 10           | C
+//     ...11 | true      |  1           | B
+//
+// So, bucket A has been split and now its hash codes are evenly split
+// between the original bucket A, and the new bucket C. Nothing in
+// bucket B is altered. So the split process needs to work through
+// bucket A (and any buckets chained to bucket A) and move key-values
+// to bucket C (potentially even creating a chain off C) as is now
+// required from their hash codes. So this does involve rehashing
+// every key in the chain descending from A and moving some of them
+// (on average, half of them) to bucket C. Again, we do no complex
+// compaction of the chain from A; it's just a slightly optimised
+// remove from A (optimised because we don't need to search for the
+// key), and a totally normal put into C.
+//
+// Some time later, we once again find that our lhash has a
+// utilisation > 0.75 and we want to split again. Now we are splitting
+// B. Once we have split B, we have split both of our original
+// buckets. We can clearly imagine further scenarios in the future
+// where we need to split them again, and so at this point we:
+//   i. Reset the SplitIndex to 0
+//  ii. Set the new MaskLow to the old MaskHigh (i.e. 3 in this case)
+// iii. Set the new MaskHigh to 2*MaskHigh+1 (i.e. 7 in this case)
+//
+// To be clear, the MaskLow is always 1 bit less than the MaskHigh -
+// so here the MaskHigh is 7 which is the least 3 bits. MaskLow is 3,
+// which is the least 2 bits.
+//
+//                 S
+// fig 5.         [A] [B] [C] [D]
+//
+// Now, if we construct the same truth table as above, we find that
+// rather than testing the LSB, we are testing the least significant 2
+// bits as MaskLow is now 3, not 1:
+//
+// hash code | LS2 >= 0? | bucket index | bucket
+//     ...00 | true      | 00           | A
+//     ...01 | true      | 01           | B
+//     ...10 | true      | 10           | C
+//     ...11 | true      | 11           | D
+//
+// So we can see that bucket B has correctly been split and roughly
+// half its contents will have moved into D. Nothing in A or C will
+// have changed. We are now starting again, if you like, but with
+// higher masks, and an original set of 4 buckets instead of 2.
+//
+// Following from this, we would now split A again (now creating E),
+// then B again (creating F), then C (creating G), which would put us
+// in this situation:
+//
+//                             S
+// fig 6.         [A] [B] [C] [D] [E] [F] [G]
+//
+// Once again, we've reached the point where we've split all our
+// original buckets, and so again when creating bucket H, we must also
+// reset the SplitIndex to 0, update the MaskLow to 7 (i.e. least 3
+// bits), and the MaskHigh to 15 (i.e. least 4 bits).
+//
+// What happens if the utilisation factor goes too low? Do we try to
+// remove and "un-split" buckets? Nope. There's no such thing. I'm
+// sure it's possible, but I've never seen any papers claiming that
+// it's worth the complexity.
+
 type LHash struct {
 	// The underlying Object in GoshawkDB which holds the root data for
 	// the LHash.
