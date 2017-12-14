@@ -262,6 +262,16 @@ import (
 // then we know that bucket hasn't been split, so we're clear to
 // proceed.
 //
+// The movement of the split index is also now justifiable. Once the
+// split index reaches the end of the original set of buckets, we know
+// that all buckets have been split, and thus we are using MaskHigh
+// for every single bucket. The only way to add more buckets is now to
+// make MaskLow the old MaskHigh, and add another bit to
+// MaskHigh. With MaskLow now the old MaskHigh, we also have to shift
+// the SplitIndex back to the far left hand side to make sure we
+// continue to use MaskLow (aka the old MaskHigh) until we split
+// another bucket.
+//
 // What happens if the utilisation factor goes too low? Do we try to
 // remove and "un-split" buckets? Nope. There's no such thing. I'm
 // sure it's possible, but I've never seen any papers claiming that
