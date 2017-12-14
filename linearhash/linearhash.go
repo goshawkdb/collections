@@ -8,19 +8,7 @@
 // objects at the same time, as GoshawkDB ensures through the use of
 // strong serialization that any dependent operations are safely
 // ordered.
-package linearhash
-
-import (
-	"bytes"
-	"encoding/binary"
-	// "fmt"
-	hash "github.com/dchest/siphash"
-	"goshawkdb.io/client"
-	mp "goshawkdb.io/collections/linearhash/msgpack"
-	"math/rand"
-	"time"
-)
-
+//
 // Implementation notes
 //
 // The Linear Hash is a relatively old data structure and many of the
@@ -50,15 +38,15 @@ import (
 //
 // Some definitions:
 //
-// - In this implementation, we declare that a bucket can contain no
-//     more than 64 keys (see msgpack.BucketCapacity).
-// - A key is just a byte-array (of unlimited length).
-// - The bucket is just a msgpack array of keys.
-// - The utilisation factor is 0.75 (see msgpack.UtilizationFactor).
+//     - In this implementation, we declare that a bucket can contain no
+//       more than 64 keys (see msgpack.BucketCapacity).
+//     - A key is just a byte-array (of unlimited length).
+//     - The bucket is just a msgpack array of keys.
+//     - The utilisation factor is 0.75 (see msgpack.UtilizationFactor).
 //
 // Initial state:
 //
-// fig 1.         [A] [B]
+//     fig 1.         [A] [B]
 //
 // The initial state of an lhash consists of two buckets, shown above:
 // A and B. When we are given a key, we need to decide which bucket we
@@ -88,9 +76,9 @@ import (
 // BucketIndex function again indicates we want bucket B. So we create
 // a chained bucket:
 //
-// fig 2.         [A] [B]
-//                     |
-//                    [C]
+//     fig 2.         [A] [B]
+//                         |
+//                        [C]
 //
 // Bucket C is chained from bucket B. The special 0th reference of B
 // points to C. The special 0th reference of C points to C. So: if a
@@ -113,7 +101,7 @@ import (
 // B is removed from the chain (and the lhash) and C now takes the
 // place of B. (figure 3)
 //
-// fig 3.         [A] [C]
+//     fig 3.         [A] [C]
 //
 // 2. When inserting an item into the chain from B, we may find a
 // suitable empty slot in B, which we then use. But it's possible that
@@ -176,8 +164,8 @@ import (
 // SplitIndex. Initially, the SplitIndex is 0, so we split the 0th
 // bucket (A) and end up with figure 4.
 //
-//                     S
-// fig 4.         [A] [B] [C]
+//                         S
+//     fig 4.         [A] [B] [C]
 //
 // The split index (S) has been incremented to 1 (so is now indicating
 // bucket B is the next to be split). Now if we return to the
@@ -188,11 +176,11 @@ import (
 // have to use the hashcode bitwise-AND with MaskHigh, which starts
 // off as 3. So we can draw up a truth table:
 //
-// hash code | LSB >= 1? | bucket index | bucket
-//     ...00 | false     | 00           | A
-//     ...01 | true      |  1           | B
-//     ...10 | false     | 10           | C
-//     ...11 | true      |  1           | B
+//     hash code | LSB >= 1? | bucket index | bucket
+//         ...00 | false     | 00           | A
+//         ...01 | true      |  1           | B
+//         ...10 | false     | 10           | C
+//         ...11 | true      |  1           | B
 //
 // Bucket A has been split and now its hash codes are evenly split
 // between the original bucket A, and the new bucket C. Nothing in
@@ -211,26 +199,27 @@ import (
 // B. Once we have split B, we have split both of our original
 // buckets. We can clearly imagine further scenarios in the future
 // where we need to split A and B again, and so now we:
-//   i. Reset the SplitIndex to 0
-//  ii. Set the new MaskLow to the old MaskHigh (i.e. 3 in this case)
-// iii. Set the new MaskHigh to 2*MaskHigh+1 (i.e. 7 in this case)
+//
+//     i.   Reset the SplitIndex to 0
+//     ii.  Set the new MaskLow to the old MaskHigh (i.e. 3 in this case)
+//     iii. Set the new MaskHigh to 2*MaskHigh+1 (i.e. 7 in this case)
 //
 // To be clear, the MaskLow is always 1 bit less than the MaskHigh -
 // so here the MaskHigh is 7 which is the least 3 bits. MaskLow is 3,
 // which is the least 2 bits.
 //
-//                 S
-// fig 5.         [A] [B] [C] [D]
+//                     S
+//     fig 5.         [A] [B] [C] [D]
 //
 // Now, if we construct the same truth table as above, we find that
 // rather than testing the LSB, we are testing the least significant 2
 // bits as MaskLow is now 3, not 1:
 //
-// hash code | LS2 >= 0? | bucket index | bucket
-//     ...00 | true      | 00           | A
-//     ...01 | true      | 01           | B
-//     ...10 | true      | 10           | C
-//     ...11 | true      | 11           | D
+//     hash code | LS2 >= 0? | bucket index | bucket
+//         ...00 | true      | 00           | A
+//         ...01 | true      | 01           | B
+//         ...10 | true      | 10           | C
+//         ...11 | true      | 11           | D
 //
 // So we can see that bucket B has correctly been split and roughly
 // half its contents will have moved into D. Nothing in A or C will
@@ -241,8 +230,8 @@ import (
 // then B again (creating F), then C (creating G), which would put us
 // in this situation:
 //
-//                             S
-// fig 6.         [A] [B] [C] [D] [E] [F] [G]
+//                                 S
+//     fig 6.         [A] [B] [C] [D] [E] [F] [G]
 //
 // MaskLow and MaskHigh are still 3 and 7 respectively.
 //
@@ -276,6 +265,19 @@ import (
 // remove and "un-split" buckets? Nope. There's no such thing. I'm
 // sure it's possible, but I've never seen any papers claiming that
 // it's worth the complexity.
+//
+package linearhash
+
+import (
+	"bytes"
+	"encoding/binary"
+	// "fmt"
+	hash "github.com/dchest/siphash"
+	"goshawkdb.io/client"
+	mp "goshawkdb.io/collections/linearhash/msgpack"
+	"math/rand"
+	"time"
+)
 
 type LHash struct {
 	// The underlying Object in GoshawkDB which holds the root data for
